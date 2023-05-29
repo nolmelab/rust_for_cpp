@@ -1,58 +1,55 @@
-# Unique pointers
+# 고유 포인터 
 
-Rust is a systems language and therefore must give you raw access to memory. It
-does this (as in C++) via pointers. Pointers are one area where Rust and C++ are
-very different, both in syntax and semantics. Rust enforces memory safety by
-type checking pointers. That is one of its major advantages over other
-languages. Although the type system is a bit complex, you get memory safety and
-bare-metal performance in return.
+러스트는 시스템 프로그래밍 언어이므로 메모리에 대한 원시적인 접근을 제공해야 합니다. 이를
+위해 (C++과 같이) 포인터를 사용합니다. 포인터는 러스트와 C++이 문법과 의미 측면에서 매우
+다른 영역입니다. 러스트는 포인터의 타입을 체크함으로써 메모리 안전성을 강제화합니다. 이는
+러스트가 다른 언어들에 비해 주요한 장점 중 하나입니다. 비록 타입 시스템이 약간 복잡할 수는
+있지만, 그로 인해 메모리 안전성과 최적화된 성능을 얻을 수 있습니다.
 
-I had intended to cover all of Rust's pointers in one post, but I think the
-subject is too large. So this post will cover just one kind - unique pointers -
-and other kinds will be covered in follow up posts.
+러스트의 포인터에 대해 처음에는 모든 종류를 다루려고 했지만, 주제가 너무 방대하다고 
+판단됩니다. 그래서 이 게시물에서는 오직 하나의 종류인 고유 포인터(unique pointers)에
+대해서만 다루고, 다른 종류의 포인터는 이후 게시물에서 다루도록 하겠습니다.
 
-First, an example without pointers:
+첫 번째로, 포인터를 사용하지 않은 예제입니다:
 
 ```rust
 fn foo() {
     let x = 75;
 
-    // ... do something with `x` ...
+    // `x`를 이용하여 작업 수행...
+
+    // ...
 }
 ```
 
-When we reach the end of `foo`, `x` goes out of scope (in Rust as in C++). That
-means the variable can no longer be accessed and the memory for the variable can
-be reused.
+위의 예제에서 x는 값 75를 담고 있는 변수입니다. 포인터 없이 일반적인 변수입니다. foo 
+함수의 범위 내에서 x를 사용하여 작업이나 연산을 수행할 수 있습니다.
 
-In Rust, for every type `T` we can write `Box<T>` for an owning (aka unique)
-pointer to `T`. We use `Box::new(...)` to allocate space on the heap and
-initialise that space with the supplied value. This is similar to `new` in C++.
-For example,
+`foo` 함수가 끝에 도달하면 `x`는 스코프(범위)를 벗어나게 되고 (C++과 마찬가지로) 해당 변수에
+더 이상 접근할 수 없으며, 변수의 메모리는 재사용될 수 있습니다.
 
+러스트에서는 모든 타입 `T`에 대해 `Box<T>`를 사용하여 소유(고유) 포인터를 나타낼 수 
+있습니다. `Box::new(...)`를 사용하여 힙(heap)에 공간을 할당하고 해당 공간을 제공된 값으로
+초기화할 수 있습니다. 이는 C++의 new와 유사합니다. 
+
+예를 들어,
 ```rust
 fn foo() {
     let x = Box::new(75);
 }
 ```
 
-Here `x` is a pointer to a location on the heap which contains the value `75`.
-`x` has type `Box<i32>`; we could have written `let x: Box<i32> =
-Box::new(75);`. This is similar to writing `int* x = new int(75);` in C++.
-Unlike in C++, Rust will tidy up the memory for us, so there is no need to call
-`free` or `delete`[^1]. Unique pointers behave similarly to
-values - they are deleted when the variable goes out of scope. In our example,
-at the end of the function `foo`, `x` can no longer be accessed and the memory
-pointed at by `x` can be reused.
+여기서 x는 값 75가 저장된 힙(heap) 상의 위치를 가리키는 포인터입니다. x의 타입은 Box<i32>이며, let x: Box<i32> = Box::new(75);와 같이 표현할 수도 있습니다. 이는 C++에서 int* x = new int(75);와 유사합니다. C++과 달리, 러스트는 메모리 정리를 우리 대신 처리해주므로 free 또는 delete를 호출할 필요가 없습니다[^1]. 고유 포인터는 값과 유사하게 동작합니다. 변수가 스코프를 벗어나면 삭제됩니다. 위의 예제에서 foo 함수의 끝에서는 x에 더 이상 접근할 수 없으며, x가 가리키는 메모리는 재사용될 수 있습니다.
 
-Owning pointers are dereferenced using the `*` as in C++. E.g.,
-
+고유 포인터는 C++과 마찬가지로 *를 사용하여 역참조됩니다. 예를 들어,
 ```rust
 fn foo() {
     let x = Box::new(75);
-    println!("`x` points to {}", *x);
+    println!("`x`가 가리키는 값은 {}", *x);
 }
 ```
+
+위의 예제에서 *x를 사용하여 고유 포인터 x가 가리키는 값을 역참조하여 출력합니다.
 
 As with primitive types in Rust, owning pointers and the data they point to are
 immutable by default. Unlike in C++, you can't have a mutable (unique) pointer to
@@ -70,32 +67,32 @@ fn foo() {
     *x = 43;          // OK, *x is mutable.
 }
 ```
-
-Owning pointers can be returned from a function and continue to live on. If they
-are returned, then their memory will not be freed, i.e., there are no dangling
-pointers in Rust. The memory will not leak. However, it will eventually go out of
-scope and then it will be freed. E.g.,
+고유 포인터는 함수에서 반환될 수 있고 계속해서 유지될 수 있습니다. 반환된 경우 해당 
+메모리는 해제되지 않고 이동합니다. 그래서 러스트에서는 댕글링 포인터(dangling pointers)가
+없습니다. 메모리 누수는 발생하지 않습니다. 그러나, 해당 고유 포인터가 최종적으로 스코프를
+벗어나면 메모리가 해제됩니다. 예를 들어,
 
 ```rust
 fn foo() -> Box<i32> {
     let x = Box::new(75);
-    x
+    x // <-- x가 리턴될 때 이동합니다.  
 }
 
 fn bar() {
     let y = foo();
-    // ... use y ...
+    // `y` 사용...
 }
 ```
 
-Here, memory is initialised in `foo`, and returned to `bar`. `x` is returned
-from `foo` and stored in `y`, so it is not deleted. At the end of `bar`, `y`
-goes out of scope and so the memory is reclaimed.
+여기에서는 `foo` 함수에서 메모리가 초기화되고 `bar` 함수로 반환됩니다. `x`는 `foo` 함수에서 
+반환되어 `y`에 저장되므로 삭제되지 않습니다. `bar` 함수의 끝에서 `y`가 스코프를 벗어나면 
+메모리가 회수됩니다.
 
-Owning pointers are unique (also called linear) because there can be only one
-(owning) pointer to any piece of memory at any time. This is accomplished by
-move semantics. When one pointer points at a value, any previous pointer can no
-longer be accessed. E.g.,
+소유 포인터는 유일하며(또는 선형적이며), 한 번에 한 개의 (소유) 포인터만 메모리의 특정
+부분을 가리킬 수 있습니다. 이는 이동 시맨틱(move semantics)을 통해 구현됩니다. 한 포인터가
+값을 가리킬 때, 이전의 포인터는 더 이상 접근할 수 없습니다. 
+
+예시:
 
 ```rust
 fn foo() {
@@ -106,8 +103,11 @@ fn foo() {
 }
 ```
 
-Likewise, if an owning pointer is passed to another function or stored in a
-field, it can no longer be accessed:
+러스트에서 이동 의미론은 "할당은 소유권을 이동시킨다"입니다. 참조는 빌리기만 하지만 
+할당은 소유권이 넘어갑니다. 함수 아규먼트에 할당하는 경우도 할당입니다.  
+
+마찬가지로, 소유 포인터가 다른 함수에 전달되거나 필드에 저장된 경우 해당 포인터에 더 이상
+접근할 수 없습니다.
 
 ```rust
 fn bar(y: Box<isize>) {
@@ -116,28 +116,30 @@ fn bar(y: Box<isize>) {
 fn foo() {
     let x = Box::new(75);
     bar(x);
-    // x can no longer be accessed
-    // let z = *x;   // Error.
+    // x에 더 이상 접근할 수 없음
+    // let z = *x;   // 에러 발생
 }
 ```
 
-Rust's unique pointers are similar to C++ `std::unique_ptr`s. In Rust, as in
-C++, there can be only one unique pointer to a value and that value is deleted
-when the pointer goes out of scope. Rust does most of its checking statically
-rather than at runtime. So, in C++ accessing a unique pointer whose value has
-moved will result in a runtime error (since it will be null). In Rust this
-produces a compile time error and you cannot go wrong at runtime.
+러스트의 고유 포인터는 C++의 `std::unique_ptr`와 유사합니다. 러스트와 마찬가지로 C++에서도
+값에 대해 하나의 고유 포인터만 있을 수 있으며, 해당 포인터가 스코프를 벗어나면 값이
+삭제됩니다. 러스트는 실행 시간이 아닌 정적으로 대부분의 검사를 수행합니다. 
 
-We'll see later that it is possible to create other pointer types which point at
-a unique pointer's value in Rust. This is similar to C++. However, in C++ this
-allows you to cause errors at runtime by holding a pointer to freed memory. That
-is not possible in Rust (we'll see how when we cover Rust's other pointer
-types).
+C++에서는 값이 이동된 고유 포인터에 접근하면 런타임 오류(널 포인터로 인해)가 발생합니다.
+그에 비해 러스트에서는 컴파일 시간 오류가 발생하며, 런타임에서 실수할 수 없습니다.
 
-As shown above, owning pointers must be dereferenced to use their values.
-However, method calls automatically dereference, so there is no need for a `->`
-operator or to use `*` for method calls. In this way, Rust pointers are a bit
-similar to both pointers and references in C++. E.g.,
+러스트의 메모리 관리는 컴파일 타잎의 가비지 컬렉션(GC)으로 이해할 수 있습니다. GC는 스택이나 
+정적 메모리에서 시작하여 메모리 소유권과 참조 관계를 전부 추적하여 메모리 해제를 처리합니다. 
+이와 같은 기능이 러스트 컴파일러에 포함되어 정적으로 검증할 수 있는 기능을 갖고 있습니다. 
+
+나중에 알아보겠지만, 러스트에서는 고유 포인터의 값을 가리키는 다른 포인터 유형을 생성할 수
+있습니다. 이는 C++과 유사합니다. 그러나 C++에서는 해제된 메모리를 가리키는 포인터를
+보유함으로써 런타임 오류를 발생시킬 수 있습니다. 이는 러스트에서 불가능합니다(러스트의 
+다른 포인터 유형을 다룰 때 이에 대해 자세히 살펴보겠습니다).
+
+위에서 보여준 것처럼, 소유 포인터의 값을 사용하려면 역참조해야 합니다. 그러나 메서드 
+호출은 자동으로 역참조되므로 -> 연산자나 메서드 호출에 *를 사용할 필요가 없습니다. 이런
+방식으로 러스트 포인터는 C++의 포인터와 참조 모두와 약간 비슷합니다. 예를 들어,
 
 ```rust
 fn bar(x: Box<Foo>, y: Box<Box<Box<Box<Foo>>>>) {
@@ -146,10 +148,13 @@ fn bar(x: Box<Foo>, y: Box<Box<Box<Box<Foo>>>>) {
 }
 ```
 
-Assuming that the type `Foo` has a method `foo()`, both these expressions are OK.
+위의 예제에서 `x`와 `y`는 각각 `Box<Foo>`와 `Box<Box<Box<Box<Foo>>>>` 타입의 고유
+포인터입니다. `x.foo()`와 `y.foo()` 호출은 자동으로 역참조되어 해당 값을 사용합니다. 
 
-Calling `Box::new()` with an existing value does not take a reference to that
-value, it copies that value. So,
+타입 `Foo`에 `foo()`라는 메서드가 있다고 가정하면 위의 표현은 모두 올바릅니다.
+
+기존 값으로 Box::new()를 호출하면 해당 값에 대한 참조를 가져오는 것이 아니라 해당 값을 
+복사합니다. 
 
 ```rust
 fn foo() {
@@ -159,36 +164,35 @@ fn foo() {
     println!("x is still {}", x);
 }
 ```
+따라서, 위 코드에서 `Box::new(x)`에서 힙에 할당된 `x` (`i32`) 값이 복사되어 생성됩니다.
 
-In general, Rust has move rather than copy semantics (as seen above with unique
-pointers). Primitive types have copy semantics, so in the above example the
-value `3` is copied, but for more complex values it would be moved. We'll cover
-this in more detail later.
+일반적으로 러스트는 복사 대신 이동 시맨틱스(move semantics)를 갖습니다(고유 포인터를 통해 
+본 것처럼). 기본 타입은 복사 시맨틱스를 갖기 때문에 위의 예제에서는 값 3이 복사되지만, 더
+복잡한 값의 경우 이동됩니다. 이에 대해서는 나중에 자세히 다루겠습니다.
 
-Sometimes when programming, however, we need more than one reference to a value.
-For that, Rust has borrowed pointers. I'll cover those in the next post.
+그러나 때로는 하나 이상의 값에 대한 참조가 필요할 수 있습니다. 이를 위해 러스트에는 빌림 포인터(borrowed pointers)가 있습니다. 다음 게시물에서 그것들에 대해 다루겠습니다.
 
+[^1]: `std::unique_ptr<T>`은 C++11에서 도입된 것으로, Rust의 `Box<T>`와 몇 가지 측면에서 유사하지만 중요한 차이점이 있습니다.
 
-[^1]: The `std::unique_ptr<T>`, introduced in C++11, is similar in some aspects
-    to Rust's `Box<T>` but there are also significant differences.
+유사점:
 
-    Similarities:
-    * The memory pointed to by a `std::unique_ptr<T>` in C++11 and a `Box<T>` in Rust
-    is automatically released once the `std::unique_ptr<T>` goes out of the scope.
-    * Both C++11's `std::unique_ptr<T>` and Rust's `Box<T>` only exhibit move semantics.
+- C++11의 `std::unique_ptr<T>`와 러스트의 `Box<T>` 모두 `std::unique_ptr<T>`가 스코프를
+  벗어나면 자동으로 가리키는 메모리가 해제됩니다.
 
-    Differences:
+- C++11의 `std::unique_ptr<T>`와 러스트의 `Box<T>` 모두 이동 시맨틱스만을 보여줍니다. 
 
-    1. C++11 allows for a `std::unique_ptr<T>` to be constructed from an existing pointer,
-       thereby allowing multiple unique pointers to the same memory.
-       This behaviour is not permitted with `Box<T>`.
-    2. Dereferencing a `std::unique_ptr<T>` that has been moved to another variable or function,
-       causes undefined behavior in C++11. This would be caught at compile time in Rust.
-    3. Mutability or immutability does not go "through" `std::unique_ptr<T>`
-       -- dereferencing a `const std::unique_ptr<T>` still yields a mutable
-       (non-`const`) reference to the underlying data. In Rust, an immutable
-       `Box<T>` does not allow mutation of the data it points to.
+차이점:
 
-    `let x = Box::new(75)` in Rust may be interpreted as `const auto x =
-    std::unique_ptr<const int>{new int{75}};` in C++11 and `const auto x =
-    std::make_unique<const int>(75);` in C++14.
+- C++11은 기존 포인터에서 `std::unique_ptr<T>`를 생성하여 동일한 메모리에 여러 개의 고유
+  포인터를 허용합니다. 그러나 `Box<T>`에서는 이러한 동작이 허용되지 않습니다.
+
+- 다른 변수나 함수로 이동된 `std::unique_ptr<T>`를 역참조하는 경우 C++11에서는 정의되지 
+  않은 동작을 발생시킵니다. 이는 러스트에서 컴파일 시간에 감지됩니다.
+
+- `std::unique_ptr<T>`를 통해 불변성 또는 가변성이 통과되지 않습니다. 
+  `const std::unique_ptr<T>`를 역참조해도 기본 데이터에 대한 가변 (non-const) 참조를 
+  얻습니다. 러스트에서는 불변 `Box<T>`는 가리키는 데이터의 변경을 허용하지 않습니다.
+
+러스트의 `let x = Box::new(75)`는 C++11에서 `const auto x = std::unique_ptr<const int>{new int{75}};` 또는 C++14에서 `const auto x = std::make_unique<const int>(75)`;로 해석될 수
+있습니다.
+

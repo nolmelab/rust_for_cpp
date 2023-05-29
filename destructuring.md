@@ -1,91 +1,88 @@
-# Destructuring
+# 분해(Destructuring)
 
-Last time we looked at Rust's data types. Once you have some data inside a structure, you
-will want to get that data out. For structs, Rust has field access, just like
-C++. For tuples, tuple structs, and enums you must use destructuring (there are
-various convenience functions in the library, but they use destructuring
-internally). Destructuring of data structures exists in C++ only since C++17, so
-it most likely familiar from languages such as Python or various functional
-languages.  The idea is that just as you can initialize a data structure by
-filling out its fields with data from a bunch of local variables, you can fill
-out a bunch of local variables with data from a data structure.  From this
-simple beginning, destructuring has become one of Rust's most powerful
-features. To put it another way, destructuring combines pattern matching with
-assignment into local variables.
+지난번에는 Rust의 데이터 타입을 살펴보았습니다. 구조체에 데이터가 포함되어 있는 경우 해당
+데이터를 가져와야 할 것입니다. 구조체의 경우 C++과 마찬가지로 필드 접근을 할 수 있습니다.
+튜플, 튜플 구조체, 그리고 열거형의 경우에는 분해(Destructuring)를 사용해야 합니다 
+(라이브러리에는 다양한 편의 기능이 있지만 내부적으로는 분해를 사용합니다). 
 
-Destructuring is done primarily through the let and match statements. The match
-statement is used when the structure being destructured can have different
-variants (such as an enum). A let expression pulls the variables out into the
-current scope, whereas match introduces a new scope. To compare:
+데이터 구조의 분해는 C++에서는 C++17부터 도입된 개념으로, Python이나 다양한 함수형 
+언어에서 익숙할 것입니다. 분해는 데이터 구조의 필드를 로컬 변수에 데이터로 채움으로써 
+로컬 변수의 값을 가져오는 것입니다. 이 간단한 개념으로부터 분해는 Rust의 가장 강력한 기능 
+중 하나가 되었습니다. 
+
+분해는 패턴 매칭과 로컬 변수 대입(할당)을 결합한 것입니다.
+
+분해(Destructuring)는 주로 `let` 문과 `match` 문을 통해 수행됩니다. `match` 문은 분해되는
+구조가 다른 변형(variant)을 가질 수 있는 경우에 사용됩니다(예: 열거형). `let` 표현식은
+변수를 현재 범위로 가져옵니다. 반면, match는 새로운 범위를 도입합니다. 비교해보면 다음과
+같습니다:
 
 ```rust
-fn foo(pair: (int, int)) {
+fn foo(pair: (i32, i32)) {
     let (x, y) = pair;
-    // we can now use x and y anywhere in foo
+    // 이제 x와 y를 foo 함수 어디에서나 사용할 수 있습니다
 
     match pair {
         (x, y) => {
-            // x and y can only be used in this scope
+            // x와 y는 이 범위에서만 사용할 수 있습니다
         }
     }
 }
 ```
 
-The syntax for patterns (used after `let` and before `=>` in the above example)
-in both cases is (pretty much) the same. You can also use these patterns in
-argument position in function declarations:
+위 예시에서 `let` 다음과 `=>` 이전에 사용되는 패턴(pattern)의 구문은 (대부분) 동일합니다.
+이러한 패턴은 함수 선언에서도 인자 위치에 사용할 수 있습니다:
 
 ```rust
-fn foo((x, y): (int, int)) {
+fn foo((x, y): (i32, i32)) {
 }
 ```
 
-(Which is more useful for structs or tuple-structs than tuples).
+(이는 튜플보다는 구조체나 튜플 구조체에서 더 유용합니다).
 
-Most initialisation expressions can appear in a destructuring pattern and they
-can be arbitrarily complex. That can include references and primitive literals
-as well as data structures. For example,
+대부분의 초기화 표현식은 분해 패턴 안에 나타날 수 있으며, 임의로 복잡할 수 있습니다. 이는
+참조 및 원시 리터럴뿐만 아니라 데이터 구조를 포함할 수 있습니다. 
+
+예를 들면 다음과 같습니다:
 
 ```rust
 struct St {
-    f1: int,
+    f1: i32,
     f2: f32
 }
 
 enum En {
     Var1,
     Var2,
-    Var3(int),
-    Var4(int, St, int)
+    Var3(i32),
+    Var4(i32, St, i32)
 }
 
 fn foo(x: &En) {
     match x {
-        &Var1 => println!("first variant"),
-        &Var3(5) => println!("third variant with number 5"),
-        &Var3(x) => println!("third variant with number {} (not 5)", x),
+        &Var1 => println!("첫 번째 변형"),
+        &Var3(5) => println!("숫자 5가 있는 세 번째 변형"),
+        &Var3(x) => println!("숫자 {}를 가진 세 번째 변형 (5가 아님)", x),
         &Var4(3, St { f1: 3, f2: x }, 45) => {
-            println!("destructuring an embedded struct, found {} in f2", x)
+            println!("내장된 구조체 분해, f2에서 {}을(를) 찾음", x)
         }
         &Var4(_, ref x, _) => {
-            println!("Some other Var4 with {} in f1 and {} in f2", x.f1, x.f2)
+            println!("f1에 {}이 있고 f2에 {}이 있는 다른 Var4", x.f1, x.f2)
         }
-        _ => println!("other (Var2)")
+        _ => println!("다른 (Var2)")
     }
 }
 ```
 
-Note how we destructure through a reference by using `&` in the patterns and how
-we use a mix of literals (`5`, `3`, `St { ... }`), wildcards (`_`), and
-variables (`x`).
+주목해야 할 점은 패턴에서 `&`를 사용하여 참조를 통해 해체하는 방법과 리터럴(`5`, `3`, 
+`St { ... }`)과 와일드카드(`_`), 변수(`x`)의 혼합 사용입니다.
 
-You can use `_` wherever a variable is expected if you want to ignore a single
-item in a pattern, so we could have used `&Var3(_)` if we didn't care about the
-integer. In the first `Var4` arm we destructure the embedded struct (a nested
-pattern) and in the second `Var4` arm we bind the whole struct to a variable.
-You can also use `..` to stand in for all fields of a tuple or struct. So if you
-wanted to do something for each enum variant but don't care about the content of
-the variants, you could write:
+패턴에서 변수가 예상되는 곳이면 어디에든 `_`를 사용하여 패턴에서 하나의 항목을 무시할 수
+있습니다. 따라서 우리는 정수에 관심이 없는 경우에 `&Var3(_)`를 사용할 수 있습니다. 첫 번째
+`Var4` 패턴에서는 중첩된 구조체(중첩된 패턴)를 분해하고, 두 번째 Var4 패턴에서는 전체
+구조체를 변수에 바인딩합니다. 또한 튜플이나 구조체의 모든 필드를 대신하여 ..을 사용할 수도
+있습니다. 따라서 각 `enum` variant에 대해 무언가를 수행하지만 variant의 내용에는 관심이 
+없는 경우 다음과 같이 작성할 수 있습니다:
 
 ```rust
 fn foo(x: En) {
@@ -98,8 +95,10 @@ fn foo(x: En) {
 }
 ```
 
-When destructuring structs, the fields don't need to be in order and you can use
-`..` to elide the remaining fields. E.g.,
+구조체를 해체할 때 필드의 순서가 일치할 필요가 없으며, 나머지 필드를 생략하기 위해 `..`을
+사용할 수 있습니다.
+
+예시:
 
 ```rust
 struct Big {
@@ -120,9 +119,12 @@ fn foo(b: Big) {
 }
 ```
 
-As a shorthand with structs you can use just the field name which creates a
-local variable with that name. The let statement in the above example created
-two new local variables `x` and `y`. Alternatively, you could write
+위의 예제에서는 구조체 `Big`를 해체하고 필드 `field6`을 `x`에, `field3`을 `y`에 바인딩하고
+나머지 필드를 생략하여 가져옵니다.
+
+구조체의 경우에는 필드 이름만 사용하여 해당 이름을 가진 로컬 변수를 생성할 수도 있습니다.
+위의 예제에서 `let` 문은 `x`와 `y`라는 두 개의 새로운 로컬 변수를 생성했습니다. 대신 
+다음과 같이 작성할 수도 있습니다.
 
 ```rust
 fn foo(b: Big) {
@@ -131,13 +133,13 @@ fn foo(b: Big) {
 }
 ```
 
-Now we create local variables with the same names as the fields, in this case
-`field3` and `field6`.
+이렇게 하면 `field3`과 `field6`라는 필드 이름과 동일한 이름의 로컬 변수가 생성됩니다.
 
-There are a few more tricks to Rust's destructuring. Lets say you want a
-reference to a variable in a pattern. You can't use `&` because that matches a
-reference, rather than creates one (and thus has the effect of dereferencing the
-object). For example,
+Rust의 분해에는 몇 가지 더 있는데, 변수에 대한 참조를 패턴에서 사용하고 싶을 때도 
+있습니다. 참조를 매칭하는 대신 참조를 생성해야 하므로 &를 사용할 수 없습니다 (따라서 
+객체를 역참조하는 효과가 있습니다). 
+
+예시:
 
 ```rust
 struct Foo {
@@ -149,10 +151,11 @@ fn foo(x: Foo) {
 }
 ```
 
-Here, `y` has type `int` and is a copy of the field in `x`.
+여기서 `y`는 `int` 타입이며 `x`의 필드의 복사본입니다.
 
-To create a reference to something in a pattern, you use the `ref` keyword. For
-example,
+패턴에서 무언가에 대한 참조를 생성하려면 `ref` 키워드를 사용합니다.
+
+예시:
 
 ```rust
 fn foo(b: Big) {
@@ -161,22 +164,22 @@ fn foo(b: Big) {
 }
 ```
 
-Here, `x` and `field6` both have type `&int` and are references to the fields in `b`.
+여기서 `x`와 `field6`는 모두 `&int` 타입이며 `b`의 필드에 대한 참조입니다.
 
-One last trick when destructuring is that if you are destructuring a complex
-object, you might want to name intermediate objects as well as individual
-fields. Going back to an earlier example, we had the pattern `&Var4(3, St{ f1:
-3, f2: x }, 45)`. In that pattern we named one field of the struct, but you
-might also want to name the whole struct object. You could write `&Var4(3, s,
-45)` which would bind the struct object to `s`, but then you would have to use
-field access for the fields, or if you wanted to only match with a specific
-value in a field you would have to use a nested match. That is not fun. Rust
-lets you name parts of a pattern using `@` syntax. For example `&Var4(3, s @ St{
-f1: 3, f2: x }, 45)` lets us name both a field (`x`, for `f2`) and the whole
-struct (`s`).
+마지막으로 분해할 때 유용한 팁 중 하나는 복잡한 객체를 분해할 때 개별 필드뿐만 아니라 
+중간 객체에도 이름을 붙일 수 있다는 점입니다. 
 
-That just about covers your options with Rust pattern matching. There are a few
-features I haven't covered, such as matching vectors, but hopefully you know how
-to use `match` and `let` and have seen some of the powerful things you can do.
-Next time I'll cover some of the subtle interactions between match and borrowing
-which tripped me up a fair bit when learning Rust.
+이전 예제로 돌아가보면 패턴 `&Var4(3, St{ f1: 3, f2: x }, 45)`가 있습니다. 이 패턴에서는
+구조체의 하나의 필드에 이름을 지정했지만, 객체 전체에 이름을 지정하고 싶을 수도 있습니다.
+`&Var4(3, s, 45)`와 같이 구조체 객체를 `s`에 바인딩할 수는 있지만, 그러면 필드에 대해서는
+필드 접근을 사용해야 하고, 특정 필드 값과 일치시키려면 중첩된 `match`를 사용해야 합니다.
+
+그렇게 하면 즐거운 경험이 아닙니다. Rust는 `@` 구문을 사용하여 패턴의 일부를 이름 지정할 
+수 있습니다. 예를 들어 `&Var4(3, s @ St{ f1: 3, f2: x }, 45)`는 필드 (`f2`에 대한 `x`)와
+구조체 전체 (`s`)에 이름을 지정할 수 있게 해줍니다.
+
+이로써 Rust의 패턴 매칭에 대한 논의를 마치겠습니다. 벡터 매칭과 같은 몇 가지 기능은 다루지
+않았지만, 이제 `match`와 `let` 문을 사용하는 방법을 잘 이해하고 Rust의 패턴 매칭의 강력한
+기능 중 일부를 보셨을 것입니다. 다음 시간에는 `match`와 빌림 간의 미묘한 상호작용에 대해
+다룰 예정이며, 이는 Rust를 배우는 과정에서 혼란을 일으킬 수 있는 요소입니다.
+

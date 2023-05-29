@@ -1,104 +1,148 @@
-# Graphs and arena allocation
+# 그래프와 아레나 할당(Graphs and arena allocation)
 
-(Note you can run the examples in this chapter by downloading this directory and
-running `cargo run`).
+(이 장의 예제를 다운로드한 후 cargo run을 실행하여 실행할 수 있습니다.)
 
-Graphs are a bit awkward to construct in Rust because of Rust's stringent
-lifetime and mutability requirements. Graphs of objects are very common in OO
-programming. In this tutorial I'm going to go over a few different approaches to
-implementation. My preferred approach uses arena allocation and makes slightly
-advanced use of explicit lifetimes. I'll finish up by discussing a few potential
-Rust features which would make using such an approach easier.
+그래프는 Rust의 엄격한 라이프타임과 가변성 요구로 인해 구축하기 다소 불편합니다. 객체의
+그래프는 객체 지향 프로그래밍에서 매우 일반적입니다. 이 튜토리얼에서는 몇 가지 다른 구현
+방법을 살펴보겠습니다. 저는 아레나 할당(arena allocation)을 사용하는 접근 방식을 선호하며
+명시적인 라이프타임을 약간 고급으로 활용합니다. 마지막으로, 이러한 접근 방식을 보다 쉽게
+사용할 수 있는 몇 가지 잠재적인 Rust 기능에 대해 논의하겠습니다.
 
-A [graph](http://en.wikipedia.org/wiki/Graph_%28abstract_data_type%29) is a
-collection of nodes with edges between some of those nodes. Graphs are a
-generalisation of lists and trees. Each node can have multiple children and
-multiple parents (we usually talk about edges into and out of a node, rather
-than parents/children). Graphs can be represented by adjacency lists or
-adjacency matrices. The former is basically a node object for each node in the
-graph, where each node object keeps a list of its adjacent nodes. An adjacency
-matrix is a matrix of booleans indicating whether there is an edge from the row
-node to the column node. We'll only cover the adjacency list representation,
-adjacency matrices have very different issues which are less Rust-specific.
+[그래프](http://en.wikipedia.org/wiki/Graph_%28abstract_data_type%29)는 노드들 간에 연결된
+엣지(edge)를 가지는 컬렉션입니다. 그래프는 리스트와 트리의 일반화된 형태입니다. 각 노드는
+여러 개의 자식과 부모를 가질 수 있습니다 (일반적으로 노드로 들어오고 나가는 엣지에 대해
+이야기하는 것이 보통입니다). 그래프는 인접 리스트(adjacency list)나 인접 행렬(adjacency
+matrix)로 표현할 수 있습니다. 전자는 그래프의 각 노드마다 노드 객체가 있으며, 각 노드 
+객체는 인접한 노드들의 목록을 유지합니다. 인접 행렬은 행과 열 노드 사이에 엣지가 있는지를
+나타내는 부울 값들의 행렬입니다. 저희는 인접 리스트 표현만 다룰 것이며, 인접 행렬은 Rust에
+특화되지 않은 다른 문제들이 매우 다르기 때문에 다루지 않을 것입니다.
 
-There are essentially two orthogonal problems: how to handle the lifetime of the
-graph and how to handle it's mutability.
+기본적으로 두 가지 상호 독립적인 문제가 있습니다: 그래프의 라이프타임 처리 방법과 가변성 처리 방법입니다.
 
-The first problem essentially boils down to what kind of pointer to use to point
-to other nodes in the graph. Since graph-like data structures are recursive (the
-types are recursive, even if the data is not) we are forced to use pointers of
-some kind rather than have a totally value-based structure. Since graphs can be
-cyclic, and ownership in Rust cannot be cyclic, we cannot use `Box<Node>` as our
-pointer type (as we might do for tree-like data structures or linked lists).
+첫 번째 문제는 결국 그래프의 다른 노드를 가리키기 위해 어떤 종류의 포인터를 사용해야 
+하는지로 이어집니다. 그래프와 유사한 데이터 구조는 재귀적입니다(데이터가 그렇지 않더라도
+유형(타잎)은 재귀적입니다). 따라서 완전히 값 기반의 구조가 아닌 한 종류의 포인터를 
+사용해야 합니다. 그래프는 순환 구조일 수 있으며, Rust에서 소유권은 순환될 수 없으므로
+`Box<Node>`와 같은 포인터 유형을 사용할 수 없습니다(트리 구조나 연결 리스트에 사용할 수 
+있는 경우처럼).
 
-No graph is truly immutable. Because there may be cycles, the graph cannot be
-created in a single statement. Thus, at the very least, the graph must be mutable
-during its initialisation phase. The usual invariant in Rust is that all
-pointers must either be unique or immutable. Graph edges must be mutable (at
-least during initialisation) and there can be more than one edge into any node,
-thus no edges are guaranteed to be unique. So we're going to have to do
-something a little bit advanced to handle mutability.
+그래프는 사이클이 있을 수 있기 때문에 어떤 그래프도 완전히 불변할 수 없습니다. 그래프는 
+단일 문장으로 생성할 수 없기 때문에 최소한 그래프의 초기화 단계 동안에는 변경 가능해야
+합니다. Rust에서의 일반적인 규칙은 포인터가 고유하거나 불변해야 한다는 것입니다. 그래프의
+엣지는 변경 가능해야 하며(초기화 단계 동안 최소한), 어떤 노드로부터 여러 개의 엣지가 있을 
+수 있기 때문에 엣지는 고유성이 보장되지 않습니다. 따라서 우리는 가변성을 다루기 위해 조금
+고급스러운 방법을 사용해야 합니다.
 
-One solution is to use mutable raw pointers (`*mut Node`). This is the most
-flexible approach, but also the most dangerous. You must handle all the lifetime
-management yourself without any help from the type system. You can make very
-flexible and efficient data structures this way, but you must be very careful.
-This approach handles both the lifetime and mutability issues in one fell swoop.
-But it handles them by essentially ignoring all the benefits of Rust - you will
-get no help from the compiler here (it's also not particularly ergonomic since
-raw pointers don't automatically (de-)reference). Since a graph using raw
-pointers is not much different from a graph in C++, I'm not going to cover that
-option here.
+하나의 해결책은 가변 원시 포인터(`*mut Node`)를 사용하는 것입니다. 이는 가장 유연한 접근
+방법이지만 가장 위험한 방법입니다. 타입 시스템의 도움 없이 수동으로 모든 라이프타임 관리를
+처리해야 합니다. 이 방법으로 매우 유연하고 효율적인 데이터 구조를 만들 수 있지만 매우
+주의해야 합니다. 이 접근 방식은 라이프타임과 가변성 문제를 한 번에 처리하지만, 사실상 
+Rust의 모든 이점을 무시하는 방식입니다. 여기에서는 컴파일러의 도움을 전혀 받지 않으며
+(원시 포인터는 자동으로 역참조되지도 않음), 사용성도 특히 좋지 않습니다. 원시 포인터를
+사용하는 그래프는 C++의 그래프와 별반 다를 바가 없기 때문에 이 옵션은 다루지 않겠습니다.
 
-The options you have for lifetime management are reference counting (shared
-ownership, using `Rc<...>`) or arena allocation (all nodes have the same lifetime,
-managed by an arena; using borrowed references `&...`). The former is
-more flexible (you can have references from outside the graph to individual
-nodes with any lifetime), the latter is better in every other way.
+수명 관리에 대한 옵션은 참조 카운팅(공유 소유권, `Rc<...>` 사용) 또는 아레나 할당(모든 
+노드가 동일한 수명을 가지며, 아레나에 의해 관리되는 대여된 참조 `&...` 사용)입니다. 
+전자는 더 유연합니다(그래프 외부에서 개별 노드로의 참조가 수명이 어떻든 가능합니다). 
+후자는 다른 측면에서 모두 더 좋은 방법입니다
 
-For managing mutability, you can either use `RefCell`, i.e., make use of Rust's
-facility for dynamic, interior mutability, or you can manage the mutability
-yourself (in this case you have to use `UnsafeCell` to communicate the interior
-mutability to the compiler). The former is safer, the latter is more efficient.
-Neither is particularly ergonomic.
+가변성 관리를 위해, Rust의 동적인 내부 가변성을 지원하는 `RefCell`을 사용할 수 있습니다.
+또는 가변성을 직접 관리할 수도 있습니다(이 경우 `UnsafeCell`을 사용하여 내부 가변성을
+컴파일러에게 알려야 합니다). 전자는 안전하고, 후자는 더 효율적입니다. 그러나 어느 쪽도 
+특히 직관적이지는 않습니다.
 
-Note that if your graph might have cycles, then if you use `Rc`, further action
-is required to break the cycles and not leak memory. Since Rust has no cycle
-collection of `Rc` pointers, if there is a cycle in your graph, the ref counts
-will never fall to zero, and the graph will never be deallocated. You can solve
-this by using `Weak` pointers in your graph or by manually breaking cycles when
-you know the graph should be destroyed. The former is more reliable. We don't
-cover either here, in our examples we just leak memory. The approach using
-borrowed references and arena allocation does not have this issue and is thus
-superior in that respect.
+참고로, 그래프에 사이클이 존재할 수 있는 경우, Rc를 사용한다면 메모리 누수를 방지하기 
+위해 추가적인 조치가 필요합니다. Rust는 `Rc` 포인터의 사이클 수집 기능이 없기 때문에,
+그래프에 사이클이 있는 경우 참조 카운트가 절대로 0으로 떨어지지 않고, 그래프가 해제되지 
+않을 것입니다. 이 문제를 해결하기 위해 그래프에서 `Weak` 포인터를 사용하거나, 그래프가
+소멸되어야 함을 알고 있을 때 사이클을 수동으로 해제할 수 있습니다. 전자가 더 신뢰성이
+있습니다. 여기에서는 두 가지 방법을 다루지 않으며, 예제에서는 메모리 누수만 발생시킵니다.
+대여된 참조와 아레나 할당을 사용하는 접근 방식은 이러한 문제가 없으므로 이 면에서 
+우수합니다.
 
-To compare the different approaches I'll use a pretty simple example. We'll just
-have a `Node` object to represent a node in the graph, this will hold some
-string data (representative of some more complex data payload) and a `Vec` of
-adjacent nodes (`edges`). We'll have an `init` function to create a simple graph
-of nodes, and a `traverse` function which does a pre-order, depth-first
-traversal of the graph. We'll use this to print the payload of each node in the
-graph. Finally, we'll have a `Node::first` method which returns a reference to
-the first adjacent node to the `self` node and a function `foo` which prints the
-payload of an individual node. These functions stand in for more complex
-operations involving manipulation of a node interior to the graph.
+다양한 접근 방식을 비교하기 위해 간단한 예제를 사용해 보겠습니다. 우리는 그래프에서 노드를
+나타내는 `Node` 객체를 사용할 것입니다. 이 객체는 일부 문자열 데이터 (복잡한 데이터
+페이로드를 대표하는 것)와 인접한 노드의 `Vec` (edges)를 포함합니다. 노드를 생성하는 `init`
+함수와 그래프를 전위, 깊이 우선으로 탐색하여 각 노드의 페이로드를 출력하는 `traverse` 
+함수를 작성할 것입니다. 마지막으로, 주어진 노드의 첫 번째 인접한 노드에 대한 참조를 
+반환하는 `Node::first` 메서드와 개별 노드의 페이로드를 출력하는 `foo` 함수를 추가합니다. 이러한 함수들은 그래프 내에서 노드 조작과 관련된 복잡한 작업을 시뮬레이션합니다.
 
-To try and be as informative as possible without boring you, I'll cover two
-combinations of possibilities: ref counting and `RefCell`, and arena allocation
-and `UnsafeCell`. I'll leave the other two combinations as an exercise.
+다음은 원시 포인터를 사용한 초기 구현입니다:
 
+```rust
+struct Node {
+    data: String,
+    edges: Vec<*mut Node>,
+}
+
+impl Node {
+    fn first(&self) -> Option<&Node> {
+        self.edges.first().map(|&ptr| unsafe { &*ptr })
+    }
+}
+
+fn foo(node: &Node) {
+    println!("{}", node.data);
+}
+
+fn init() -> *mut Node {
+    let mut node1 = Box::new(Node {
+        data: "노드 1".to_string(),
+        edges: Vec::new(),
+    });
+
+    let mut node2 = Box::new(Node {
+        data: "노드 2".to_string(),
+        edges: Vec::new(),
+    });
+
+    let mut node3 = Box::new(Node {
+        data: "노드 3".to_string(),
+        edges: Vec::new(),
+    });
+
+    node1.edges.push(&mut *node2);
+    node2.edges.push(&mut *node3);
+
+    Box::into_raw(node1)
+}
+
+fn traverse(node: *const Node) {
+    if let Some(node) = unsafe { node.as_ref() } {
+        foo(node);
+        for edge in &node.edges {
+            traverse(*edge);
+        }
+    }
+}
+
+fn main() {
+    let graph = init();
+    traverse(graph);
+    unsafe {
+        Box::from_raw(graph);
+    }
+}
+```
+
+이 구현은 원시 포인터 (`*mut Node`)를 사용하여 노드 간의 엣지를 나타냅니다. `init` 함수는
+세 개의 노드와 그들의 연결을 가진 간단한 그래프를 초기화합니다. `traverse` 함수는 주어진
+노드부터 시작하여 전위, 깊이 우선으로 그래프를 탐색하고 각 노드의 페이로드를 출력합니다.
+`Node::first` 메서드는 주어진 노드의 첫 번째 인접한 노드에 대한 참조를 반환하며, `foo` 
+함수는 단일 노드의 페이로드를 출력합니다.
+
+가능한 한 자세하고 지루하지 않게 설명하기 위해, 두 가지 조합을 다루겠습니다: 참조 계수와 `RefCell`, 그리고 아레나 할당과 `UnsafeCell`. 다른 두 가지 조합은 연습으로 남겨둡니다.
 
 ## `Rc<RefCell<Node>>`
 
-See [full example](src/rc_graph.rs).
+[전체 예시 코드](src/rc_graph.rs).
 
-This is the safer option because there is no unsafe code. It is also the least
-efficient and least ergonomic option. It is pretty flexible though, nodes of the
-graph can be easily reused outside the graph since they are ref-counted. I would
-recommend this approach if you need a fully mutable graph, or need your nodes to
-exist independently of the graph.
+이 방법은 안전한 옵션이며, 안전하지 않은 코드가 없습니다. 그러나 가장 효율적이고 직관적인
+옵션은 아닙니다. 그래도 그래프의 노드들은 참조 계수로 인해 그래프 외부에서 쉽게 재사용할 
+수 있으므로 유연성이 높습니다. 만약 완전히 가변적인 그래프가 필요하거나 노드를 그래프와
+독립적으로 사용해야 하는 경우에는 이 방법을 추천합니다.
 
-The node structure looks like
+노드 구조는 다음과 같습니다.
 
 ```rust
 struct Node {
@@ -107,22 +151,21 @@ struct Node {
 }
 ```
 
-Creating a new node is not too bad: `Rc::new(RefCell::new(Node { ... }))`. To
-add an edge during initialisation, you have to borrow the start node as mutable,
-and clone the end node into the Vec of edges (this clones the pointer,
-incrementing the reference count, not the actual node). E.g.,
+새로운 노드를 생성하는 것은 그리 어렵지 않습니다: `Rc::new(RefCell::new(Node { ... }))`
+입니다. 초기화하는 동안 엣지를 추가하기 위해서는 시작 노드를 가변으로 빌려야 하고, 끝 
+노드를 `Vec`의 엣지로 클론해야 합니다 (이렇게 하면 포인터가 클론되며 참조 계수가 증가하게
+됩니다. 실제 노드가 복제되지는 않습니다). 예를 들면 다음과 같습니다.
 
 ```rust
 let mut mut_root = root.borrow_mut();
 mut_root.edges.push(b.clone());
 ```
 
-The `RefCell` dynamically ensures that we are not already reading or writing the
-node when we write it.
+`RefCell`은 우리가 노드를 쓸 때 이미 읽거나 쓰고 있는지를 동적으로 확인합니다.
 
-Whenever you access a node, you have to use `.borrow()` to borrow the `RefCell`.
-Our `first` method has to return a ref-counted pointer, rather than a borrowed
-reference, so callers of `first` also have to borrow:
+노드에 접근할 때마다 `.borrow()`를 사용하여 `RefCell`을 빌려와야 합니다. `first` 메서드는
+빌린 참조 대신에 참조 계수 포인터를 반환해야 하므로, `first`를 호출하는 코드에서도 
+빌려와야 합니다.
 
 ```rust
 fn first(&self) -> Rc<RefCell<Node>> {
@@ -136,61 +179,50 @@ pub fn main() {
 }
 ```
 
+## `&Node` 와 `UnsafeCell`
 
-## `&Node` and `UnsafeCell`
+[전체 예시 코드](src/ref_graph.rs).
 
-See [full example](src/ref_graph.rs).
+이 접근 방식에서는 엣지로 빌린 참조를 사용합니다. 이는 편리하고 Rust의 '일반적인' 
+라이브러리에서 빌린 참조를 주로 사용하는 데에 우리의 노드를 사용할 수 있게 해줍니다 
+(Rust의 ref counted 객체의 좋은 점 중 하나는 수명 시스템과 잘 작동한다는 것입니다. 
+`Rc`에서 빌린 참조를 직접 (안전하게) 데이터를 참조하는 데 사용할 수 있습니다. 이전
+예시에서는 `RefCell`이 이를 방지하지만 `Rc/UnsafeCell` 접근 방식을 사용하면 가능합니다).
 
-In this approach we use borrowed references as edges. This is nice and ergonomic
-and lets us use our nodes with 'regular' Rust libraries which primarily operate
-with borrowed references (note that one nice thing about ref counted objects in
-Rust is that they play nicely with the lifetime system. We can create a borrowed
-reference into the `Rc` to directly (and safely) reference the data. In the
-previous example, the `RefCell` prevents us doing this, but an `Rc`/`UnsafeCell`
-approach should allow it).
+소멸도 올바르게 처리됩니다. 유일한 제약은 모든 노드가 동시에 소멸되어야 한다는 것입니다.
+노드의 할당과 소멸은 아레나(arena)를 사용하여 처리됩니다.
 
-Destruction is correctly handled too - the only constraint is that all the nodes
-must be destroyed at the same time. Destruction and allocation of nodes is
-handled using an arena.
+다른 한편으로, 우리는 꽤 많은 명시적인 라이프타임을 사용해야 합니다. 불행하게도 여기서는
+라이프타임 생략(lifetime elision)의 혜택을 받을 수 없습니다. 이 절의 끝에서는 언어의
+미래적인 방향에 대해 논의하겠습니다. 이는 상황을 개선할 수 있는 몇 가지 가능성을 
+제시합니다.
 
-On the other hand, we do need to use quite a few explicit lifetimes.
-Unfortunately we don't benefit from lifetime elision here. At the end of the
-section I'll discuss some future directions for the language which could make
-things better.
+구축하는 동안에는 여러 참조가 있는 노드를 변경해야 할 수 있습니다. 이는 안전한 Rust 
+코드에서는 불가능하기 때문에 `unsafe` 블록 내에서 초기화해야 합니다. 노드가 가변이면서 
+여러 번 참조되므로, 러스트 컴파일러에게 평소의 불변성에 의존할 수 없다는 것을 알리기 위해
+`UnsafeCell`을 사용해야 합니다.
 
-During construction we will mutate our nodes which might be multiply referenced.
-This is not possible in safe Rust code, so we must initialise inside an `unsafe`
-block. Since our nodes are mutable and multiply referenced, we must use an
-`UnsafeCell` to communicate to the Rust compiler that it cannot rely on its
-usual invariants.
+이 접근 방식은 언제 유용한가요? 그래프는 초기화 중에만 변경되어야 합니다. 또한, 그래프의
+모든 노드가 동일한 수명을 가져야 합니다(모든 노드가 동시에 소멸될 수 있다면 이러한 제약을
+완화할 수 있습니다). 마찬가지로, 노드를 변경할 수 있는 복잡한 불변성(invariant)에 의존할 
+수 있지만, 프로그래머는 해당 측면의 안전성에 책임을 져야 하므로 간단하게 유지하는 것이
+좋습니다.
 
-When is this approach feasible? The graph must only be mutated during
-initialisation. In addition, we require that all nodes in the graph have the
-same lifetime (we could relax these constraints somewhat to allow adding nodes
-later as long as they can all be destroyed at the same time). Similarly, we
-could rely on more complicated invariants for when the nodes can be mutated, but
-it pays to keep things simple, since the programmer is responsible for safety
-in those respects.
+아레나 할당(arena allocation)은 일련의 객체가 동일한 수명을 가지고 동시에 해제될 수 있는 
+메모리 관리 기법입니다. 아레나는 메모리를 할당하고 해제하는 역할을 하는 객체입니다. 개별
+객체를 할당하는 대신 큰 메모리 청크가 한 번에 할당되고 해제되기 때문에 아레나 할당은 매우
+효율적입니다. 일반적으로 모든 객체는 연속된 메모리 청크에서 할당됩니다. 이는 그래프를 
+탐색할 때 캐시 일관성을 향상시킵니다.
 
-Arena allocation is a memory management technique where a set of objects have
-the same lifetime and can be deallocated at the same time. An arena is an object
-responsible for allocating and deallocating the memory. Since large chunks of
-memory are allocated and deallocated at once (rather than allocating individual
-objects), arena allocation is very efficient. Usually, all the objects are
-allocated from a contiguous chunk of memory, that improves cache coherency when
-you are traversing the graph.
+Rust에서는 아레나 할당을 지원하기 위해 libarena 크레이트가 있으며 컴파일러 전체에서
+사용됩니다. 두 종류의 아레나가 있습니다 - 타입화된(typed) 아레나와 타입이 없는(untyped)
+아레나입니다. 전자는 더 효율적이고 사용하기 쉽지만 단일 타입의 객체만 할당할 수 있습니다.
+후자는 더 유연하며 임의의 객체를 할당할 수 있습니다. 아레나로 할당된 객체는 모두 동일한
+수명을 가지며, 이는 아레나 객체의 매개변수로 전달됩니다. 타입 시스템은 아레나로 할당된
+객체에 대한 참조가 아레나 자체보다 더 오래 살 수 없도록 보장합니다.
 
-In Rust, arena allocation is supported by the [libarena](https://doc.rust-lang.org/1.1.0/arena/index.html)
-crate and is used throughout the compiler. There are two kinds of arenas - typed
-and untyped. The former is more efficient and easier to use, but can only
-allocate objects of a single type. The latter is more flexible and can allocate
-any object. Arena allocated objects all have the same lifetime, which is a
-parameter of the arena object. The type system ensures references to arena
-allocated objects cannot live longer than the arena itself.
-
-Our node struct must now include the lifetime of the graph, `'a`. We wrap our
-`Vec` of adjacent nodes in an `UnsafeCell` to indicate that we will mutate it
-even when it should be immutable:
+우리의 노드 구조체에는 이제 그래프의 수명인 `'a`가 포함되어야 합니다. 인접한 노드들의 
+`Vec`을 `UnsafeCell`로 감싸서 변경 가능함을 나타냅니다.:
 
 ```rust
 struct Node<'a> {
@@ -199,8 +231,7 @@ struct Node<'a> {
 }
 ```
 
-Our new function must also use this lifetime and must take as an argument the
-arena which will do the allocation:
+새로운 함수도 이 수명을 사용해야 하며, 할당을 담당할 아레나를 인수로 받아야 합니다.:
 
 ```rust
 fn new<'a>(datum: &'static str, arena: &'a TypedArena<Node<'a>>) -> &'a Node<'a> {
@@ -211,46 +242,36 @@ fn new<'a>(datum: &'static str, arena: &'a TypedArena<Node<'a>>) -> &'a Node<'a>
 }
 ```
 
-We use the arena to allocate the node. The lifetime of the graph is derived from
-the lifetime of the reference to the arena, so the arena must be passed in from
-the scope which covers the graph's lifetime. For our examples, that means we
-pass it into the `init` method. (One could imagine an extension to the type
-system which allows creating values at scopes outside their lexical scope, but
-there are no plans to add such a thing any time soon). When the arena goes out
-of scope, the whole graph is destroyed (Rust's type system ensures that we can't
-keep references to the graph beyond that point).
+아레나를 사용하여 노드를 할당합니다. 그래프의 수명은 아레나에 대한 참조의 수명에서 
+파생되므로, 그래프의 수명을 포함하는 범위에서 아레나를 전달해야 합니다. 우리의 예제에서는
+이를 `init` 메서드로 전달합니다. (현재 스코프 외부에서 값들을 생성할 수 있는 타입 시스템의
+확장을 상상해볼 수 있지만, 그러한 확장을 추가할 계획은 현재 없습니다). 아레나가 스코프를
+벗어나면 전체 그래프가 소멸됩니다 (Rust의 타입 시스템은 그래프에 대한 참조를 그 이상의
+지점에서 유지할 수 없도록 보장합니다).
 
-Adding an edge is a bit different looking:
+간선(엣지)을 추가하는 방법은 약간 다릅니다.:
 
 ```rust
 (*root.edges.get()).push(b);
 ```
 
-We're essentially doing the obvious `root.edges.push(b)` to push a node (`b`) on
-to the list of edges. However, since `edges` is wrapped in an `UnsafeCell`, we
-have to call `get()` on it. That gives us a mutable raw pointer to edges (`*mut
-Vec<&Node>`), which allows us to mutate `edges`. However, it also requires us to
-manually dereference the pointer (raw pointers do not auto-deref), thus the
-`(*...)` construction. Finally, dereferencing a raw pointer is unsafe, so the
-whole lot has to be wrapped up in an unsafe block.
+우리는 기본적으로 `root.edges.push(b)`를 호출하여 노드 (`b`)를 간선 목록에 추가합니다.
+그러나 `edges`가 `UnsafeCell`로 래핑되어 있기 때문에 `get()`을 호출해야 합니다. 이렇게 
+하면 `edges`에 대한 가변적인 원시 포인터 (`*mut Vec<&Node>`)가 제공되며, `edges`를 수정할 
+수 있게 됩니다. 그러나 이로 인해 포인터를 수동으로 역참조해야 하므로 (`*...`) 구조가
+필요합니다. 마지막으로, 원시 포인터의 역참조는 안전하지 않으므로 전체 코드는 `unsafe`
+블록으로 감싸야 합니다.
 
-The interesting part of `traverse` is:
+traverse의 흥미로운 부분은 다음과 같습니다.
 
-```rust
+rust
+Copy code
 for n in &(*self.edges.get()) {
     n.traverse(f, seen);
 }
-```
+간선 목록에 접근하기 위해 이전 패턴을 따르는데, 이는 unsafe 블록이 필요합니다. 이 경우 실제로 안전하다는 것을 알고 있으므로, 초기화 이후이기 때문에 변이가 없을 것입니다.
 
-We follow the previous pattern for getting at the edges list, which requires an
-unsafe block. In this case we know it is in fact safe because we must be post-
-initialisation and thus there will be no mutation.
-
-Again, the `first` method follows the same pattern for getting at the `edges`
-list. And again must be in an unsafe block. However, in contrast to the graph
-using `Rc<RefCell<_>>`, we can return a straightforward borrowed reference to
-the node. That is very convenient. We can reason that the unsafe block is safe
-because we do no mutation and we are post-initialisation.
+다시 말하지만, first 메서드는 edges 목록에 접근하는 데 동일한 패턴을 따릅니다. 그리고 다시 unsafe 블록에 포함되어야 합니다. 그러나 Rc<RefCell<_>>을 사용한 그래프와는 달리, 노드에 대해 직접적인 대여 참조를 반환할 수 있습니다. 이것은 매우 편리합니다. 우리는 변이가 없고 초기화 이후이므로 unsafe 블록이 안전하다고 추론할 수 있습니다.
 
 ```rust
 fn first(&'a self) -> &'a Node<'a> {
@@ -260,71 +281,55 @@ fn first(&'a self) -> &'a Node<'a> {
 }
 ```
 
-### Future language improvements for this approach
+### 이런 접근을 위한 언어의 개선할 점들 
 
-I believe that arena allocation and using borrowed references are an important
-pattern in Rust. We should do more in the language to make these patterns safer
-and easier to use. I hope use of arenas becomes more ergonomic with the ongoing
-work on [allocators](https://github.com/rust-lang/rfcs/pull/244). There are
-three other improvements I see:
+저는 아레나 할당과 대여된 참조를 사용하는 것이 러스트에서 중요한 패턴이라고 생각합니다. 
+이러한 패턴을 보다 안전하고 사용하기 쉽게 만들기 위해 언어에서 더 많은 개선을 해야 한다고
+믿습니다. 또한, 현재 진행 중인 allocators 작업을 통해 아레나 사용이 보다 직관적이고 
+편리해질 것을 기대합니다. 저는 다음과 같은 세 가지 개선 사항을 제안합니다:
 
-#### Safe initialisation
+#### 안전한 초기화
 
-There has been lots of research in the OO world on mechanisms for ensuring
-mutability only during initialisation. How exactly this would work in Rust is an
-open research question, but it seems that we need to represent a pointer which
-is mutable and not unique, but restricted in scope. Outside that scope any
-existing pointers would become normal borrowed references, i.e., immutable *or*
-unique.
+OO 세계에서는 초기화 중에만 가변성이 보장되는 메커니즘에 대한 많은 연구가 진행되었습니다.
+Rust에서 이러한 메커니즘이 정확히 어떻게 작동할지는 여전히 연구 질문입니다. 그러나 우리는
+가변이지만 유일하지 않고 범위에 제한된 포인터를 나타내야 합니다. 해당 범위 밖에서는 기존의
+포인터가 일반적인 대여된 참조, 즉 불변한 참조 또는 유일한 참조로 전환됩니다.
 
-The advantage of such a scheme is that we have a way to represent the common
-pattern of mutable during initialisation, then immutable. It also relies on the
-invariant that, while individual objects are multiply owned, the aggregate (in
-this case a graph) is uniquely owned. We should then be able to adopt the
-reference and `UnsafeCell` approach, without the `UnsafeCell`s and the unsafe
-blocks, making that approach more ergonomic and more safer.
+이러한 방식의 장점은 초기화 중에 가변성이 필요한 일반적인 패턴을 나타낼 수 있는 방법이
+있다는 것입니다. 또한 개별 객체는 여러 소유권을 갖지만 집합체(이 경우 그래프)는 유일하게
+소유됨이라는 불변성에 의존합니다. 따라서 우리는 참조와 UnsafeCell 접근 방식을 채택할 수 
+있어 UnsafeCell과 unsafe 블록 없이도 더 직관적이고 안전한 접근 방식을 사용할 수 있습니다.
 
-Alex Summers and Julian Viereck at ETH Zurich are investigating this
-further.
+ETH 취리히의 Alex Summers와 Julian Viereck은 이에 대해 추가적인 연구를 수행하고 있습니다.
 
+#### 제네릭 모듈
 
-#### Generic modules
+'그래프의 수명'은 특정 그래프에 대해 항상 일정합니다. 수명을 반복하는 것은 단순한 코드 중복입니다. 이를 더 직관적으로 만드는 한 가지 방법은 그래프 모듈을 수명으로 매개변수화하여 각 구조체, 구현체, 함수에 추가하지 않아도 되도록 하는 것입니다. 그래프의 수명은 여전히 모듈 외부에서 지정해야 하지만, 추론이 대부분의 사용 사례를 처리해 줄 것으로 기대합니다 (현재 함수 호출에서와 같이).
 
-The 'lifetime of the graph' is constant for any particular graph. Repeating the
-lifetime is just boilerplate. One way to make this more ergonomic would be to
-allow the graph module to be parameterised by the lifetime, so it would not need
-to be added to every struct, impl, and function. The lifetime of the graph would
-still need to be specified from outside the module, but hopefully inference
-would take care of most uses (as it does today for function calls).
+그것이 어떻게 보일 수 있는지는 [ref_graph_generic_mod.rs](src/ref_graph_generic_mod.rs)를
+참조하십시오. (우리는 안전한 초기화 (위에서 제안된 방식)를 사용하여 unsafe 코드를 제거할 수 있어야 합니다).
 
-See [ref_graph_generic_mod.rs](src/ref_graph_generic_mod.rs) for how that might look.
-(We should also be able to use safe initialisation (proposed above) to remove
-the unsafe code).
+또한 이 [RFC 이슈](https://github.com/rust-lang/rfcs/issues/424)도 참고하세요.
 
-See also this [RFC issue](https://github.com/rust-lang/rfcs/issues/424).
+이 기능은 참조와 UnsafeCell 접근 방식의 구문적인 오버헤드를 크게 줄일 수 있을 것입니다.
 
-This feature would vastly reduce the syntactic overhead of the reference and
-`UnsafeCell` approach.
+#### 수명 생략
 
+현재 우리는 프로그래머가 일부 수명을 함수 시그니처에서 생략하여 사용성을 향상시킬 수 
+있도록 허용하고 있습니다. 그래프의 경우 `&Node` 접근 방식은 수명 생략 규칙 중 어떤 것도
+활용할 수 없기 때문에 다소 복잡한 점이 있습니다.
 
-#### Lifetime elision
+Rust에서 일반적인 패턴은 공통 수명을 가진 데이터 구조입니다. 이러한 데이터 구조에 대한
+참조는 `&'a Foo<'a>`와 같은 유형을 생성합니다. 예를 들어 그래프 예제에서는 
+`&'a Node<'a>`입니다. 이러한 경우에 도움이 되는 수명 생략 규칙이 있다면 좋을 것입니다.
+하지만 실제로 어떻게 동작해야 할지는 잘 모르겠습니다.
 
-We currently allow the programmer to elide some lifetimes in function signatures
-to improve ergonomics. One reason the `&Node` approach to graphs is a bit ugly
-is because it doesn't benefit from any of the lifetime elision rules.
+일반 모듈을 사용한 예제를 살펴보면 수명 생략 규칙을 많이 확장할 필요가 없어 보입니다 
+(실제로 `Node::new`가 주어진 수명 없이 작동하는지 확실하지는 않지만, 작동하지 않는 경우
+작동하도록 하는 것은 꽤 간단한 확장처럼 보입니다). 모듈-일반 수명에 대한 수명 생략을
+허용하는 새로운 규칙을 추가하여 `'static`을 제외한 유효한 수명이 범위 내에 하나만 있는
+경우에 수명 생략을 허용할 수도 있지만, 여러 유효한 수명이 있는 경우에는 어떻게 동작할지는 
+잘 모르겠습니다 (예를 들어 `foo`와 `init` 함수를 참조하세요).
 
-A common pattern in Rust is data structures with a common lifetime. References
-into such data structures give rise to types like `&'a Foo<'a>`, for example
-`&'a Node<'a>` in the graph example. It would be nice to have an elision
-rule that helps in this case. I'm not really sure how it should work though.
-
-Looking at the example with generic modules, it doesn't look like we need to
-extend the lifetime elision rules very much (I'm not actually sure if
-`Node::new` would work without the given lifetimes, but it seems like a fairly
-trivial extension to make it work if it doesn't). We might want to add some new
-rule to allow elision of module-generic lifetimes if they are the only ones in
-scope (other than `'static`), but I'm not sure how that would work with multiple
-in- scope lifetimes (see the `foo` and `init` functions, for example).
-
-If we don't add generic modules, we might still be able to add an elision rule
-specifically to target `&'a Node<'a>`, not sure how though.
+일반 모듈을 추가하지 않는다면, 여전히 특정하게 `'a Node<'a>`를 대상으로 하는 수명 생략
+규칙을 추가할 수 있을 것입니다. 하지만 그 방법에 대해서는 잘 모르겠습니다.

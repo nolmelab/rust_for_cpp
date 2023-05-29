@@ -5,12 +5,6 @@
 `if` 문은 Rust에서 C++와 거의 동일합니다. 한 가지 차이점은 중괄호는 필수이지만 테스트 
 중인 조건식 (조건 표현식) 주위의 괄호는 필요하지 않습니다.
 
-Another is that `if` is an expression, so you can use it the same way
-as the ternary `?:` operator in C++ (remember from the previous section that if the last
-expression in a block is not terminated by a semi-colon, then it becomes the
-value of the block). There is no ternary `?:` in Rust. So, the following two
-functions do the same thing:
-
 또 다른 하나는 `if`가 표현식이므로 C++의 삼항 `?:` 연산자와 같은 방식으로 사용할 수 
 있습니다(이전 섹션에서 블록의 마지막 표현식이 세미콜론으로 끝나지 않으면 블록의 값이 
 된다고 했습니다). 따라서 다음 두 함수는 같은 일을 합니다:
@@ -107,12 +101,11 @@ fn print_all(all: Vec<i32>) {
 }
 ```
 
-Hopefully, it is obvious what the `len` function does. TODO range notation
 `len` 함수는 이름에서 길이를 돌려주는 함수라는 점이 자명합니다. `0..10`에서 `..`은 
 범위(Range)를 만드는 연산자입니다. 
 
-A more Rust-like equivalent of the preceding example would be to use an
-enumerating iterator:
+열거 반복자(enumuerate iterator)를 사용하여 위 예제를 러스트 스타일로 작성하면 다음과 
+같습니다:
 
 ```rust
 fn print_all(all: Vec<i32>) {
@@ -145,9 +138,6 @@ iter_mut()로 가변 참조를 얻고, `*`로 참조에 접근해서 그 내용�
 
 ## switch와 비슷한 (더 강력한) match 
 
-Rust has a match expression which is similar to a C++ switch statement, but much
-more powerful. This simple version should look pretty familiar:
-
 러스트는 C++의 switch 문과 비슷하지만 매우 훨씬 강력한 match 표현식이 있습니다. 아래 
 단순한 버전은 매우 익숙할 겁니다: 
 
@@ -161,10 +151,6 @@ fn print_some(x: i32) {
     }
 }
 ```
-
-There are some syntactic differences - we use `=>` to go from the matched value
-to the expression to execute, and the match arms are separated by `,` (that last
-`,` is optional). 
 
 몇 가지 문법 차이가 있습니다. 러스트는 `=>`를 사용하여 일치한 값에 실행할 표현식으로 
 이동하고, 매치 팔(match arm)들은 `,`로 구분됩니다. 마지막 `,`는 생략할 수 있습니다. 
@@ -190,10 +176,6 @@ fn print_some(x: i32) {
 
 여기서 매치 암의 `x`는 인수를 숨기는 새 변수를 도입합니다.  내부 범위에서 변수를 선언하는 
 것과 같습니다.
-
-If we don't want to name the variable, we can use `_` for an unnamed variable,
-which is like having a wildcard match. If we don't want to do anything, we can
-provide an empty branch:
 
 변수 이름을 지정하고 싶지 않다면 이름 없는 변수에 `_`를 사용하면 됩니다,
 와일드카드 매치를 사용하는 것과 같습니다. 아무 작업도 하지 않으려면 빈 브랜치를 제공하면 
@@ -253,12 +235,6 @@ fn print_some_more(x: i32) {
 추가하면  `match` 문에서 모두 처리하도록 확인합니다. 
 
 ## 메서드 호출 
-
-Finally, just a quick note that methods exist in Rust, similarly to C++. They
-are always called via the `.` operator (no `->`, more on this in another post).
-We saw a few examples above (`len`, `iter`). We'll go into more detail in the
-future about how they are defined and called. Most assumptions you might make
-from C++ or Java are probably correct.
 
 러스트에도 메서드(struct의 구현함수)가 C++과 유사하게 있습니다. 이들 메서드는 항상 
 `.` 연산자로 호출되고 `->` 연산자는 없습니다 (뒤에 더 나옵니다). 위에서 `len`, `iter`가

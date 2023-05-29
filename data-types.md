@@ -1,17 +1,18 @@
-# Data types
+# 자료 구조
 
-In this post I'll discuss Rust's data types. These are roughly equivalent to
-classes, structs, and enums in C++. One difference with Rust is that data and
-behaviour are much more strictly separated in Rust than C++ (or Java, or other
-OO languages). Behaviour is defined by functions and those can be defined in
-traits and `impl`s (implementations), but traits cannot contain data, they are
-similar to Java's interfaces in that respect. I'll cover traits and impls in a
-later post, this one is all about data.
+이번 글에서는 Rust의 데이터 타입에 대해 다루겠습니다. 이는 대체로 C++의 클래스, 구조체,
+열거형과 유사합니다. Rust에서의 한 가지 차이점은 데이터와 동작이 C++(또는 Java나 다른 
+객체 지향 언어)에 비해 훨씬 엄격하게 분리된다는 점입니다. 
 
-## Structs
+동작은 함수에 의해 정의되며, 이러한 함수는 트레이트와 impl에서 정의할 수 있지만, 
+트레이트에는 데이터를 포함할 수 없으며, 이 점에서 Java의 인터페이스와 유사합니다. 
+트레이트와 impl에 대해서는 나중에 다룰 예정이므로, 이번 글에서는 데이터에 초점을 맞출
+것입니다.
 
-A rust struct is similar to a C struct or a C++ struct without methods. Simply a
-list of named fields. The syntax is best seen with an example:
+## struct (구조체)
+
+Rust의 구조체는 C 구조체나 메서드가 없는 C++ 구조체와 유사합니다. 단순히 이름이 지정된 
+필드들의 목록입니다. 구문은 다음 예시를 통해 가장 잘 이해할 수 있습니다:
 
 ```rust
 struct S {
@@ -20,16 +21,14 @@ struct S {
 }
 ```
 
-Here we define a struct called `S` with two fields. The fields are comma
-separated; if you like, you can comma-terminate the last field too.
+위 예시에서는 field1과 field2라는 두 개의 필드를 가진 S라는 구조체를 정의합니다. 필드들은
+쉼표로 구분되며, 마지막 필드도 쉼표로 끝낼 수 있습니다.
 
-Structs introduce a type. In the example, we could use `S` as a type.
-`SomeOtherStruct` is assumed to be another struct (used as a type in the
-example), and (like C++) it is included by value, that is, there is no pointer
-to another struct object in memory.
+구조체는 타입을 도입합니다. 예시에서는 S를 타입으로 사용할 수 있습니다. SomeOtherStruct는
+다른 구조체로 가정되며, (C++과 마찬가지로) 값으로 포함되어 있으므로 메모리에서 다른 구조체
+객체를 가리키는 포인터는 없습니다.
 
-Fields in structs are accessed using the `.` operator and their name. An example
-of struct use:
+구조체의 필드는 `.` 연산자와 필드의 이름을 사용하여 접근됩니다. 구조체 사용의 예시입니다:
 
 ```rust
 fn foo(s1: S, s2: &S) {
@@ -40,25 +39,28 @@ fn foo(s1: S, s2: &S) {
 }
 ```
 
-Here `s1` is struct object passed by value and `s2` is a struct object passed by
-reference. As with method calls, we use the same `.` to access fields in both, no
-need for `->`.
+여기서 `s1`은 값으로 전달되는 구조체 객체이고 `s2`는 참조로 전달되는 구조체 객체입니다.
+메서드 호출과 마찬가지로 두 경우 모두 필드에 접근하기 위해 동일한 `.`을 사용하며, `->`는
+필요하지 않습니다.
 
-Structs are initialised using struct literals. These are the name of the struct
-and values for each field. For example,
+구조체는 구조체 리터럴을 사용하여 초기화됩니다. 이는 구조체의 이름과 각 필드에 대한 값으로 
+구성됩니다. 예를 들면 다음과 같습니다:
 
 ```rust
 fn foo(sos: SomeOtherStruct) {
-    let x = S { field1: 45, field2: sos };  // initialise x with a struct literal
+    let x = S { field1: 45, field2: sos };  // 구조체 리터럴을 사용하여 x를 초기화
     println!("x.field1 = {}", x.field1);
 }
 ```
 
-Structs cannot be recursive; that is, you can't have cycles of struct names
-involving definitions and field types. This is because of the value semantics of
-structs. So for example, `struct R { r: Option<R> }` is illegal and will cause a
-compiler error (see below for more about Option). If you need such a structure
-then you should use some kind of pointer; cycles with pointers are allowed:
+위의 예시에서 `x`는 구조체 리터럴을 사용하여 초기화되었습니다. `field1`의 값은 `45`이고 
+`field2`는 `sos`의 값으로 설정되었습니다. `x.field1`의 값을 출력합니다.
+
+구조체는 재귀적일 수 없습니다. 즉, 정의와 필드 유형을 포함하는 구조체 이름의 순환을 가질 
+수 없습니다. 이는 구조체의 값 의미론 때문입니다. 따라서 예를 들어 
+`struct R { r: Option<R> }`는 잘못되었으며 컴파일러 오류가 발생합니다 (Option에 대해서는
+아래에서 더 자세히 설명합니다). 이러한 구조가 필요한 경우 포인터의 일종을 사용해야 합니다.
+포인터를 사용하면 순환 구조가 허용됩니다:
 
 ```rust
 struct R {
@@ -66,12 +68,14 @@ struct R {
 }
 ```
 
-If we didn't have the `Option` in the above struct, there would be no way to
-instantiate the struct and Rust would signal an error.
+위의 예시에서는 `Box<R>`을 사용하여 재귀적인 구조체를 생성하였습니다. `Box`는 힙에 
+구조체를 할당하는 스마트 포인터입니다.
 
-Structs with no fields do not use braces in either their definition or literal
-use. Definitions do need a terminating semi-colon though, presumably just to
-facilitate parsing.
+만약 위의 구조체에서 `Option`이 없다면, 해당 구조체를 인스턴스화할 수 있는 방법이 없으며
+Rust는 오류를 표시할 것입니다.
+
+필드가 없는 구조체는 정의나 리터럴 사용 시 중괄호를 사용하지 않습니다. 그러나 정의는 종결
+세미콜론을 필요로 합니다. 아마도 구문 분석을 용이하게 하기 위해서인 것 같습니다.
 
 ```rust
 struct Empty;
@@ -80,24 +84,24 @@ fn foo() {
     let e = Empty;
 }
 ```
+위의 예시에서 Empty는 필드가 없는 구조체로, 정의와 인스턴스화가 간단합니다.
 
-## Tuples
+## 튜플
 
-Tuples are anonymous, heterogeneous sequences of data. As a type, they are
-declared as a sequence of types in parentheses. Since there is no name, they are
-identified by structure. For example, the type `(i32, i32)` is a pair of
-integers and `(i32, f32, S)` is a triple. Tuple values are initialised in the
-same way as tuple types are declared, but with values instead of types for the
-components, e.g., `(4, 5)`. An example:
+튜플은 익명의 이질적인 데이터 시퀀스입니다. 타입으로서, 괄호 안에 타입의 시퀀스로 
+선언됩니다. 이름이 없기 때문에 구조에 의해 식별됩니다. 예를 들어, 타입 (i32, i32)은 
+정수의 쌍을 의미하며 (i32, f32, S)는 트리플입니다. 튜플 값은 타입을 선언하는 방식과 
+동일하게 초기화됩니다. 다만 구성 요소에 값이 사용됩니다. 예를 들면 (4, 5)입니다. 아래는
+예시입니다.
 
 ```rust
-// foo takes a struct and returns a tuple
+// foo는 구조체를 인자로 받아 튜플을 반환합니다.
 fn foo(x: SomeOtherStruct) -> (i32, f32, S) {
     (23, 45.82, S { field1: 54, field2: x })
 }
 ```
 
-Tuples can be used by destructuring using a `let` expression, e.g.,
+튜플은 let 표현식을 사용하여 디스트럭처링을 통해 사용할 수 있습니다. 예를 들어,
 
 ```rust
 fn bar(x: (i32, i32)) {
@@ -106,31 +110,40 @@ fn bar(x: (i32, i32)) {
 }
 ```
 
-We'll talk more about destructuring next time.
-
-
-## Tuple structs
-
-Tuple structs are named tuples, or alternatively, structs with unnamed fields.
-They are declared using the `struct` keyword, a list of types in parentheses,
-and a semicolon. Such a declaration introduces their name as a type. Their
-fields must be accessed by destructuring (like a tuple), rather than by name.
-Tuple structs are not very common.
+튜플의 값은 디스트럭처링 외에 `.`으로 순서를 지정하여 접근할 수 있습니다. 
 
 ```rust
-struct IntPoint (i32, i32);
+fn bar_another(x: (i32, i32)) {
+    println!("x was ({}, {})", x.0, x.1);
+}
+```
+
+다음 시간에는 디스트럭처링에 대해 더 자세히 이야기하겠습니다.
+
+
+## 튜플 구조체
+
+튜플 구조체는 이름이 지정된 튜플 또는 이름이 없는 필드를 가진 구조체입니다. struct 키워드,
+괄호 안의 타입 목록 및 세미콜론을 사용하여 선언됩니다. 이러한 선언은 해당 이름을 타입으로 
+소개합니다. 필드에는 이름 대신 디스트럭처링을 통해 접근해야 합니다 (튜플과 유사한 방식).
+튜플 구조체는 그리 흔하지 않습니다.
+
+```rust
+struct IntPoint(i32, i32);
 
 fn foo(x: IntPoint) {
-    let IntPoint(a, b) = x;  // Note that we need the name of the tuple
-                             // struct to destructure.
+    let IntPoint(a, b) = x;  // 튜플 구조체의 이름이 디스트럭처링에 필요합니다.
     println!("x was ({}, {})", a, b);
 }
 ```
 
-## Enums
+튜플 구조체는 구조체와 enum만 메서드 구현을 갖기 떄문에 튜플에 메서드를 제공하기위한 
+우회 기법입니다. 또 빠르게 뭔가를 실험하고자 할 때 사용합니다.
 
-Enums are types like C++ enums or unions, in that they are types which can take
-multiple values. The simplest kind of enum is just like a C++ enum:
+## enum (열거형)j
+
+열거형(Enum)은 C++의 열거형 또는 공용체와 같은 타입으로, 여러 가지 값을 가질 수 있는 
+타입입니다. 가장 간단한 종류의 열거형은 C++의 열거형과 비슷합니다.
 
 ```rust
 enum E1 {
@@ -140,18 +153,18 @@ enum E1 {
 }
 
 fn foo() {
-    let x: E1 = Var2;
+    let x: E1 = E1::Var2;
     match x {
-        Var2 => println!("var2"),
+        E1::Var2 => println!("var2"),
         _ => {}
     }
 }
 ```
 
-However, Rust enums are much more powerful than that. Each variant can contain
-data. Like tuples, these are defined by a list of types. In this case they are
-more like unions than enums in C++. Rust enums are tagged unions rather than untagged unions (as in C++).
-That means you can't mistake one variant of an enum for another at runtime[^1]. An example:
+그러나 Rust의 열거형은 그보다 훨씬 강력합니다. 각각의 변형(variant)은 데이터를 포함할 수
+있습니다. 튜플과 마찬가지로, 이들은 유니온(union)과 같은 개념이며, C++의 열거형과는
+다릅니다. Rust의 열거형은 태그가 있는 유니온(tagged union)입니다. 즉, 런타임에서 하나의
+변형을 다른 변형으로 오해할 수 없습니다[^1]. 예시를 살펴보겠습니다:
 
 ```rust
 enum Expr {
@@ -161,46 +174,55 @@ enum Expr {
 }
 
 fn foo() {
-    let x = Or(true, false);   // x has type Expr
+    let x = Or(true, false);   // x의 타입은 Expr입니다
 }
 ```
 
-Many simple cases of object-oriented polymorphism are better handled in Rust
-using enums.
+Rust에서는 많은 경우에 간단한 객체 지향 다형성을 열거형을 사용하여 더 잘 처리할 수 
+있습니다. 열거형을 활용하면 코드를 더 유연하고 안전하게 작성할 수 있습니다.
 
-To use enums we usually use a match expression. Remember that these are similar
-to C++ switch statements. I'll go into more depth on these and other ways to
-destructure data next time. Here's an example:
+Rust에서는 열거형을 정의할 때 각 변형(variant)은 데이터를 포함할 수 있습니다. 각 변형은 
+변형 이름으로 시작하고, 괄호 안에 포함될 수 있는 데이터의 타입을 지정하여 정의됩니다. 위의
+예시에서 Expr 열거형은 Add, Or, Lit 세 가지 변형을 가지고 있습니다. 각 변형은 다른 타입의
+데이터를 포함할 수 있습니다. 예를 들어, Add 변형은 두 개의 i32 값, Or 변형은 두 개의 bool
+값, Lit 변형은 하나의 i32 값을 포함합니다.
+
+Rust의 열거형은 하나의 타입 내에서 다양한 경우나 상태를 처리하는 강력한 메커니즘을
+제공합니다. 열거형은 계산 중에 다양한 가능성이나 결과를 표현하는 데 자주 사용되며, 이를 
+통해 코드를 더 표현적이고 간결하게 만들 수 있습니다.
+
+열거형을 사용할 때 일반적으로 match 표현식을 사용합니다. 이는 C++의 switch 문과 
+유사합니다. 다음에 더 자세히 다루겠지만, 데이터를 분해하는 다른 방법들도 소개할 예정입니다.
+다음은 예시입니다:
 
 ```rust
 fn bar(e: Expr) {
     match e {
-        Add(x, y) => println!("An `Add` variant: {} + {}", x, y),
-        Or(..) => println!("An `Or` variant"),
-        _ => println!("Something else (in this case, a `Lit`)"),
+        Add(x, y) => println!("`Add` 변형: {} + {}", x, y),
+        Or(..) => println!("`Or` 변형"),
+        _ => println!("다른 변형 (이 경우 `Lit` 변형)"),
     }
 }
 ```
+`match` 표현식의 각 분기는 `Expr`의 변형과 일치합니다. 모든 변형을 다루어야 합니다. 마지막
+case (_)는 나머지 모든 변형을 다루는 것으로, 예시에서는 `Lit`만 존재합니다. 변형의 데이터는
+변수에 바인딩될 수 있습니다. Add 분기에서는 Add 내의 두 개의 i32 값을 x와 y에 바인딩하고
+있습니다. 데이터에 관심이 없다면 ..를 사용하여 모든 데이터와 일치시킬 수 있습니다. `Or`의
+경우와 같습니다. 
 
-Each arm of the match expression matches a variant of `Expr`. All variants must
-be covered. The last case (`_`) covers all remaining variants, although in the
-example there is only `Lit`. Any data in a variant can be bound to a variable.
-In the `Add` arm we are binding the two i32s in an `Add` to `x` and `y`. If we
-don't care about the data, we can use `..` to match any data, as we do for `Or`.
+## Option 열거형
 
+Rust에서 흔히 사용되는 열거형 중 하나는 `Option`입니다. 이는 `Some`과 `None`이라는 두 가지
+변형을 갖습니다. `None`은 데이터가 없고 `Some`은 `T` 타입의 단일 필드를 가지고 있습니다.
+(Option은 제네릭 열거형으로, 이후에 다룰 예정이지만, 아마도 C++에서의 제네릭 개념은
+알고 있을 것입니다). 
 
-## Option
-
-One particularly common enum in Rust is `Option`. This has two variants - `Some`
-and `None`. `None` has no data and `Some` has a single field with type `T`
-(`Option` is a generic enum, which we will cover later, but hopefully the
-general idea is clear from C++). Options are used to indicate a value might be
-there or might not. Any place you use a null pointer in C++[^2]
-to indicate a value which is in some way undefined, uninitialised, or false,
-you should probably use an Option in Rust. Using Option is safer because you
-must always check it before use; there is no way to do the equivalent of
-dereferencing a null pointer. They are also more general, you can use them with
-values as well as pointers. An example:
+`Option`은 값이 있을 수도 있고 없을 수도 있다는 것을 나타내는 데 사용됩니다. C++에서 널
+포인터를 사용하여 어떤 방식으로든 정의되지 않거나 초기화되지 않은 값을 나타내는 경우에는
+Rust에서 `Option`을 사용하는 것이 좋습니다. `Option`을 사용하면 안전성이 향상되는데,
+사용하기 전에 항상 확인해야 하기 때문에 널 포인터를 역참조하는 것과 같은 동작을 할 수
+없습니다. 또한 더 일반적으로 사용할 수 있으며, 포인터뿐만 아니라 값과 함께 사용할 수
+있습니다. 예시입니다:
 
 ```rust
 use std::rc::Rc;
@@ -218,20 +240,19 @@ fn is_root(node: Node) -> bool {
 }
 ```
 
-Here, the parent field could be either a `None` or a `Some` containing an
-`Rc<Node>`. In the example, we never actually use that payload, but in real life
-you usually would.
+여기서 `parent` 필드는 `None`이거나 `Rc<Node>`를 포함하는 `Some`일 수 있습니다. 이
+예시에서는 실제로 해당 필드를 사용하지 않지만, 실제 상황에서는 일반적으로 사용됩니다.
 
+`Option`에는 편의 메서드도 있으므로 `is_root`의 본문을 `node.parent.is_none()` 또는
+`!node.parent.is_some()`으로 작성할 수도 있습니다.
 
-There are also convenience methods on Option, so you could write the body of
-`is_root` as `node.parent.is_none()` or `!node.parent.is_some()`.
+## 상속된 가변성과 `Cell`/`RefCell`
 
-## Inherited mutability and Cell/RefCell
+Rust에서 로컬 변수는 기본적으로 변경할 수 없으며 mut을 사용하여 변경 가능하게 표시할 수 
+있습니다. 구조체나 열거형의 필드는 변경 가능성이 상속됩니다. 즉, 구조체 객체의 필드는 해당
+객체 자체가 변경 가능하거나 변경할 수 없는지에 따라 변경 가능하거나 변경할 수 없습니다. 
 
-Local variables in Rust are immutable by default and can be marked mutable using
-`mut`. We don't mark fields in structs or enums as mutable, their mutability is
-inherited. This means that a field in a struct object is mutable or immutable
-depending on whether the object itself is mutable or immutable. Example:
+예시:
 
 ```rust
 struct S1 {
@@ -244,80 +265,76 @@ struct S2 {
 
 fn main() {
     let s = S1 { field1: 45, field2: S2 { field: 23 } };
-    // s is deeply immutable, the following mutations are forbidden
+    // s는 변경할 수 없으므로 다음 변경은 허용되지 않습니다.
     // s.field1 = 46;
     // s.field2.field = 24;
 
     let mut s = S1 { field1: 45, field2: S2 { field: 23 } };
-    // s is mutable, these are OK
+    // s는 변경 가능하므로 다음 변경은 허용됩니다.
     s.field1 = 46;
     s.field2.field = 24;
 }
 ```
 
-Inherited mutability in Rust stops at references. This is similar to C++ where
-you can modify a non-const object via a pointer from a const object. If you want
-a reference field to be mutable, you have to use `&mut` on the field type:
+Rust에서 상속된 가변성은 참조에서 멈춥니다. 이는 C++에서 `const` 객체의 포인터를 통해 
+비-`const` 객체를 수정할 수 있는 것과 유사합니다. 참조 필드를 변경 가능하게 하려면 필드
+ 유형에 `&mut`을 사용해야 합니다.
 
 ```rust
 struct S1 {
     f: i32
 }
 struct S2<'a> {
-    f: &'a mut S1   // mutable reference field
+    f: &'a mut S1   // 변경 가능한 참조 필드
 }
 struct S3<'a> {
-    f: &'a S1       // immutable reference field
+    f: &'a S1       // 변경 불가능한 참조 필드
 }
 
 fn main() {
     let mut s1 = S1{f:56};
     let s2 = S2 { f: &mut s1};
-    s2.f.f = 45;   // legal even though s2 is immutable
-    // s2.f = &mut s1; // illegal - s2 is not mutable
+    s2.f.f = 45;   // s2는 변경할 수 없더라도 합법적입니다.
+    // s2.f = &mut s1; // 합법적이지 않습니다. - s2는 변경할 수 없음
     let s1 = S1{f:56};
     let mut s3 = S3 { f: &s1};
-    s3.f = &s1;     // legal - s3 is mutable
-    // s3.f.f = 45; // illegal - s3.f is immutable
+    s3.f = &s1;     // 합법적입니다. - s3는 변경 가능함
+    // s3.f.f = 45; // 합법적이지 않습니다. - s3.f는 변경할 수 없음
 }
 ```
 
-(The `'a` parameter on `S2` and `S3` is a lifetime parameter, we'll cover those soon).
+(`S2`와 `S3`의 `'a` 매개변수는 라이프타임 매개변수이며, 곧 다룰 예정입니다).
 
-Sometimes whilst an object is logically immutable, it has parts which need to be
-internally mutable. Think of various kinds of caching or a reference count
-(which would not give true logical immutability since the effect of changing the
-ref count can be observed via destructors). In C++, you would use the `mutable`
-keyword to allow such mutation even when the object is const. In Rust we have
-the Cell and RefCell structs. These allow parts of immutable objects to be
-mutated. Whilst that is useful, it means you need to be aware that when you see
-an immutable object in Rust, it is possible that some parts may actually be
-mutable.
+가끔은 논리적으로 불변인 객체도 내부적으로 변경 가능한 부분이 필요한 경우가 있습니다.
+캐싱이나 참조 횟수 계산 등을 생각해보세요. 이러한 경우 C++에서는 `mutable` 키워드를 사용하여
+객체가 `const`인 상태에서도 해당 부분을 변경할 수 있게 합니다. Rust에서는 `Cell`과 
+`RefCell` 구조체를 사용합니다. 이들을 사용하면 불변 객체의 일부를 변경할 수 있습니다. 
+이는 유용하지만, Rust에서 불변 객체를 볼 때 일부 부분이 실제로는 변경 가능할 수 있다는 
+점을 인식해야 한다는 것을 의미합니다.
 
-RefCell and Cell let you get around Rust's strict rules on mutation and
-aliasability. They are safe to use because they ensure that Rust's invariants
-are respected dynamically, even though the compiler cannot ensure that those
-invariants hold statically. Cell and RefCell are both single threaded objects.
+`RefCell`과 `Cell`을 사용하면 Rust의 엄격한 변경 규칙과 별칭 규칙을 우회할 수 있습니다.
+이들은 러스트의 불변성이 동적으로 존중되도록 보장하기 때문에 사용이 안전합니다. 그러나
+컴파일러는 이러한 불변성을 정적으로 확인할 수 없기 때문에 동적으로 확인합니다. `Cell`과
+`RefCell`은 단일 스레드 환경에서 사용하는 객체입니다.
 
-Use Cell for types which have copy semantics (pretty much just primitive types).
-Cell has `get` and `set` methods for changing the stored value, and a `new`
-method to initialise the cell with a value. Cell is a very simple object - it
-doesn't need to do anything smart since objects with copy semantics can't keep
-references elsewhere (in Rust) and they can't be shared across threads, so there
-is not much to go wrong.
+`Cell`은 복사(Copy) 의미론을 가진 타입(주로 기본 타입)에 사용됩니다. `Cell`은 저장된 값을
+변경하기 위한 `get`과 `set` 메서드, 그리고 값을 초기화하기 위한 `new` 메서드를 제공합니다.
+`Cell`은 매우 간단한 객체입니다. 왜냐하면 복사 의미론을 가진 객체는 (러스트에서) 다른 곳에
+참조를 유지할 수 없고, 다른 스레드 간에 공유할 수 없기 때문에 문제가 발생할 여지가 없기
+때문입니다.
 
-Use RefCell for types which have move semantics, that means nearly everything in
-Rust, struct objects are a common example. RefCell is also created using `new`
-and has a `set` method. To get the value in a RefCell, you must borrow it using
-the borrow methods (`borrow`, `borrow_mut`, `try_borrow`, `try_borrow_mut`)
-these will give you a borrowed reference to the object in the RefCell. These
-methods follow the same rules as static borrowing - you can only have one
-mutable borrow, and can't borrow mutably and immutably at the same time.
-However, rather than a compile error you get a runtime failure. The `try_`
-variants return an Option - you get `Some(val)` if the value can be borrowed and
-`None` if it can't. If a value is borrowed, calling `set` will fail too.
+`RefCell`은 이동(Semantics) 의미론을 가진 타입에 사용됩니다. 이는 거의 모든 러스트의 
+타입을 포함하며, 구조체 객체는 일반적인 예입니다. `RefCell`도 `new`를 사용하여 생성되며, 
+`set` 메서드를 가지고 있습니다. `RefCell`에서 값을 가져오려면 `borrow` 메서드 (`borrow`,
+`borrow_mut`, `try_borrow`, `try_borrow_mut`)를 사용하여 대여(reference)해야 합니다. 
 
-Here's an example using a ref-counted pointer to a RefCell (a common use-case):
+이 메서드들은 정적 대여 규칙과 동일한 규칙을 따릅니다. 즉, 하나의 가변 대여(mutably borrow)
+만 가능하며, 동시에 가변 참조와 불변 참조를 동시에 할 수는 없습니다. 그러나 컴파일 오류 
+대신 실행 시간 오류가 발생합니다. try_ 접두사가 있는 변형들은 `Option`을 반환합니다. 값이
+대여될 수 있는 경우 `Some(val)`이 반환되고, 그렇지 않은 경우 `None`이 반환됩니다. 값이
+이미 참조된 경우 `set`을 호출해도 실패합니다.
+
+아래는 RefCell에 대해 참조 카운트를 갖는 포인터를 사용하는 예시입니다: 
 
 ```rust
 use std::rc::Rc;
@@ -349,12 +366,22 @@ fn main() {
 }
 ```
 
-If you're using Cell/RefCell, you should try to put them on the smallest object
-you can. That is, prefer to put them on a few fields of a struct, rather than
-the whole struct. Think of them like single threaded locks, finer grained
-locking is better since you are more likely to avoid colliding on a lock.
+Cell과 RefCell은 가능한 한 작은 범위에서 사용해야 합니다. 즉, 전체 구조체 대신 몇 개의
+필드에 적용하는 것이 좋습니다. 이는 단일 스레드 락과 유사한 개념으로, 더 작은 단위로 락을
+설정하면 충돌할 가능성이 줄어듭니다.
+
+Cell과 RefCell은 변경 가능성을 가진 데이터에 대한 민감한 영역에 선택적으로 적용하는 것이
+일반적으로 권장됩니다. 구조체 전체 대신 개별적인 필드에 적용함으로써 더 세밀한 제어를 할 
+수 있으며, 변경 가능한 데이터에 대한 동시 액세스 시 충돌이나 간섭을 최소화할 수 있습니다.
+
+상호 배제를 위한 단일 스레드 락과 유사한 개념으로 생각해 보세요. `Cell`과 `RefCell`을 특정
+필드에 선택적으로 적용함으로써 변경 가능한 상태를 효과적으로 분리하고 관리할 수 있으며,
+데이터 구조의 서로 다른 부분에 동시 접근이 제한되지 않도록 합니다.
 
 
-[^1]: In C++17 there is `std::variant<T>` type that is closer to Rust enums than unions.
+[^1]: C++17에서는 Rust의 열거형에 더 가까운 `std::variant<T>` 타입이 있습니다. 이는 C++의
+`union`보다는 Rust의 `enum`와 더 비슷합니다.
 
-[^2]: Since C++17 `std::optional<T>` is the best alternative of Option in Rust.
+[^2]: C++17부터 `std::optional<T>`은 Rust `Option`의 가장 적합한 대안입니다.
+
+

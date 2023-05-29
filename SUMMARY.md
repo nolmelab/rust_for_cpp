@@ -10,5 +10,5 @@
 * [Destructuring pt 1](destructuring.md)
 * [Destructuring pt 2](destructuring-2.md)
 * [Arrays and vecs](arrays.md)
-* [Graphs and arena allocation](graphs/README.md)
 * [Closures and first-class functions](closures.md)
+* [Graphs and arena allocation](graphs/README.md)

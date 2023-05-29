@@ -1,42 +1,37 @@
-# Arrays and Vectors
+# 배열과 벡터
 
-Rust arrays are pretty different from C arrays. For starters they come in
-statically and dynamically sized flavours. These are more commonly known as
-fixed length arrays and slices. As we'll see, the former is kind of a bad name
-since both kinds of array have fixed (as opposed to growable) length. For a
-growable 'array', Rust provides the `Vec` collection.
+Rust의 배열은 C의 배열과는 매우 다릅니다. 먼저, Rust 배열은 정적 크기와 동적 크기로
+나뉩니다. 이것들은 주로 고정 길이 배열과 슬라이스라고 알려져 있습니다. 하지만 후자는 
+고정된(늘어날 수 없는) 길이를 가지기 때문에 전자가 다소 부적절한 이름이라고 할 수 
+있습니다. 늘어날 수 있는 '배열'이 필요한 경우에는 Rust는 `Vec` 컬렉션을 제공합니다.
 
+## 고정 길이 배열
 
-## Fixed length arrays
+고정 길이 배열의 길이는 정적으로 알려져 있으며 타입에 포함됩니다. 예를 들어, `[i32; 4]`는
+길이가 4인 `i32` 배열의 타입입니다.
 
-The length of a fixed length array is known statically and features in its
-type. E.g., `[i32; 4]` is the type of an array of `i32`s with length four.
-
-Array literal and array access syntax is the same as C:
+배열 리터럴과 배열 접근 문법은 C와 동일합니다.
 
 ```rust
-let a: [i32; 4] = [1, 2, 3, 4];     // As usual, the type annotation is optional.
+let a: [i32; 4] = [1, 2, 3, 4];     // 타입 어노테이션은 필수가 아닙니다.
 println!("The second element is {}", a[1]);
 ```
 
-You'll notice that array indexing is zero-based, just like C.
+배열 인덱싱은 C와 마찬가지로 0부터 시작함을 알 수 있습니다.
 
-However, unlike C/C++[^1], array indexing is bounds checked. In
-fact all access to arrays is bounds checked, which is another way Rust is a
-safer language.
+하지만 C/C++과는 달리, 배열 인덱싱은 경계를 검사합니다. 사실, 배열에 대한 모든 접근은 경계
+검사가 수행되며, 이는 Rust가 안전한 언어인 또 다른 이유입니다.
 
-If you try to do `a[4]`, then you will get a runtime panic. Unfortunately, the
-Rust compiler is not clever enough to give you a compile time error, even when
-it is obvious (as in this example).
+`a[4]`와 같은 접근을 시도하면 런타임 에러가 발생합니다. 불행히도, Rust 컴파일러는 이 
+예제와 같이 명백한 경우에도 컴파일 타임 에러를 제공하지 않습니다.
 
-If you like to live dangerously, or just need to get every last ounce of
-performance out of your program, you can still get unchecked access to arrays.
-To do this, use the `get_unchecked` method on an array. Unchecked array accesses
-must be inside an unsafe block. You should only need to do this in the rarest
-circumstances.
+만약 위험을 감수하거나 프로그램의 성능을 극대화해야 하는 경우, 배열에 대해 확인되지 않은
+접근을 할 수도 있습니다. 이를 위해 배열의 `get_unchecked` 메서드를 사용합니다. 확인되지 
+않은 배열 접근은 `unsafe` 블록 내에서 수행되어야 합니다. 이는 극히 예외적인 상황에서만
+사용해야 합니다.
 
-Just like other data structures in Rust, arrays are immutable by default and
-mutability is inherited. Mutation is also done via the indexing syntax:
+Rust의 다른 데이터 구조와 마찬가지로, 배열은 기본적으로 변경할 수 없으며 가변성은 
+상속됩니다. 배열의 요소를 수정하기 위해서도 인덱싱 문법을 사용합니다:
 
 ```rust
 let mut a = [1, 2, 3, 4];
@@ -44,7 +39,7 @@ a[3] = 5;
 println!("{:?}", a);
 ```
 
-And just like other data, you can borrow an array by taking a reference to it:
+데이터 구조와 마찬가지로, 배열을 참조하여 대여할 수도 있습니다:
 
 ```rust
 fn foo(a: &[i32; 4]) {
@@ -56,163 +51,146 @@ fn main() {
 }
 ```
 
-Notice that indexing still works on a borrowed array.
+참조된 배열에서도 여전히 인덱싱을 사용할 수 있다는 것에 주목하세요.
 
-This is a good time to talk about the most interesting aspect of Rust arrays for
-C++ programmers - their representation. Rust arrays are value types: they are
-allocated on the stack like other values and an array object is a sequence of
-values, not a pointer to those values (as in C). So from our examples above, `let
-a = [1_i32, 2, 3, 4];` will allocate 16 bytes on the stack and executing `let b
-= a;` will copy 16 bytes. If you want a C-like array, you have to explicitly
-make a pointer to the array, this will give you a pointer to the first element.
+Rust 배열에서 C++ 프로그래머에게 가장 흥미로운 측면에 대해 이야기하기 좋은 시점입니다 -
+배열의 표현 방식입니다. Rust 배열은 값 타입(value type)입니다. 다른 값과 마찬가지로 스택에
+할당되며, 배열 객체는 값의 시퀀스이며 값에 대한 포인터가 아닙니다(C와는 달리). 따라서 위의
+예제에서 `let a = [1_i32, 2, 3, 4];`는 스택에 16바이트를 할당하고 `let b = a;`를 실행하면 
+16바이트가 복사됩니다. C 스타일의 배열이 필요한 경우 배열에 대한 포인터를 명시적으로
+만들어야 합니다. 이렇게 하면 첫 번째 요소를 가리키는 포인터가 생성됩니다.
 
-A final point of difference between arrays in Rust and C++ is that Rust arrays
-can implement traits, and thus have methods. To find the length of an array, for
-example, you use `a.len()`.
+Rust 배열과 C++의 배열 사이의 마지막 차이점은 Rust 배열이 트레잇(trait)을 구현할 수 있고,
+따라서 메서드를 가질 수 있다는 것입니다. 예를 들어 배열의 길이를 구하는 경우 `a.len()`을 
+사용합니다.
 
+## 슬라이스 (slice)
 
-## Slices
+Rust에서 슬라이스(slice)는 컴파일 시점에 알 수 없는 길이를 가진 배열입니다. 타입의 구문은
+ 고정 길이 배열과 동일하지만 길이가 없습니다. 예를 들어, [i32]는 32비트 정수의 
+ 슬라이스(정적으로 알려진 길이가 없는)입니다.
 
-A slice in Rust is just an array whose length is not known at compile time. The
-syntax of the type is just like a fixed length array, except there is no length:
-e.g., `[i32]` is a slice of 32 bit integers (with no statically known length).
+슬라이스에는 주의해야 할 점이 있습니다. Rust에서는 컴파일러가 모든 객체의 크기를 알아야 
+하므로 슬라이스의 크기를 알 수 없습니다. 따라서 슬라이스 타입의 값을 가질 수 없습니다. 
+예를 들어 fn foo(x: [i32])와 같이 작성하면 컴파일러에서 오류를 발생시킵니다.
 
-There is a catch with slices: since the compiler must know the size of all
-objects in Rust, and it can't know the size of a slice, then we can never have a
-value with slice type. If you try and write `fn foo(x: [i32])`, for example, the
-compiler will give you an error.
+따라서 항상 슬라이스에 대한 포인터를 가져야 합니다. fn foo(x: &[i32]) (슬라이스에 대한 
+빌린 참조) 또는 fn foo(x: *mut [i32]) (슬라이스에 대한 가변 원시 포인터)와 같이 작성해야 
+합니다.
 
-So, you must always have pointers to slices (there are some very technical
-exceptions to this rule so that you can implement your own smart pointers, but
-you can safely ignore them for now). You must write `fn foo(x: &[i32])` (a
-borrowed reference to a slice) or `fn foo(x: *mut [i32])` (a mutable raw pointer
-to a slice), etc.
-
-The simplest way to create a slice is by coercion. There are far fewer implicit
-coercions in Rust than there are in C++. One of them is the coercion from fixed
-length arrays to slices. Since slices must be pointer values, this is
-effectively a coercion between pointers. For example, we can coerce `&[i32; 4]`
-to `&[i32]`, e.g.,
+가장 간단한 방법으로 슬라이스를 생성하는 방법은 강제 형변환(coercion)입니다. Rust에서는 
+C++보다 훨씬 적은 암묵적인 형변환이 있습니다. 그 중 하나는 고정 길이 배열에서 슬라이스로의
+형변환입니다. 슬라이스는 포인터 값이어야 하므로 이는 사실상 포인터 간의 형변환이 됩니다.
+예를 들어, &[i32; 4]를 &[i32]로 형변환할 수 있습니다. 예시 코드는 다음과 같습니다.
 
 ```rust
 let a: &[i32] = &[1, 2, 3, 4];
 ```
 
-Here the right hand side is a fixed length array of length four, allocated on
-the stack. We then take a reference to it (type `&[i32; 4]`). That reference is
-coerced to type `&[i32]` and given the name `a` by the let statement.
+여기서 오른쪽은 스택에 할당된 길이가 4인 고정 길이 배열입니다. 그런 다음 해당 배열에 대한
+참조(`&[i32; 4]`)를 가져옵니다. 이 참조는 형변환을 통해 `&[i32]` 타입으로 변환되고, `let`
+문을 통해 `a`라는 이름을 가집니다.
 
-Again, access is just like C (using `[...]`), and access is bounds checked. You
-can also check the length yourself by using `len()`. So clearly the length of
-the array is known somewhere. In fact all arrays of any kind in Rust have known
-length, since this is essential for bounds checking, which is an integral part
-of memory safety. The size is known dynamically (as opposed to statically in the
-case of fixed length arrays), and we say that slice types are dynamically sized
-types (DSTs, there are other kinds of dynamically sized types too, they'll be
-covered elsewhere).
+다시 말하지만, 접근은 C와 동일하게 `[...]`를 사용하며, 접근은 경계 검사(bound check)가
+수행됩니다. `len()`을 사용하여 직접 길이를 확인할 수도 있습니다. 따라서 배열의 길이는
+어딘가에 알려져 있습니다. 사실상 모든 종류의 배열은 Rust에서 알려진 길이를 가지고 있으며,
+이는 메모리 안전성의 중요한 부분인 경계 검사에 필수적입니다. 크기는 동적으로 알려지며
+(고정 길이 배열의 경우 정적으로 알려짐), 슬라이스 타입은 동적 크기 타입(DST - Dynamically 
+Sized Typed, 다른 종류의 동적 크기 타입도 있음)이라고 말합니다.
 
-Since a slice is just a sequence of values, the size cannot be stored as part of
-the slice. Instead it is stored as part of the pointer (remember that slices
-must always exist as pointer types). A pointer to a slice (like all pointers to
-DSTs) is a fat pointer - it is two words wide, rather than one, and contains the
-pointer to the data plus a payload. In the case of slices, the payload is the
-length of the slice.
+슬라이스는 값의 시퀀스일 뿐이므로 크기는 슬라이스의 일부로 저장될 수 없습니다. 대신 크기는
+포인터의 일부로 저장됩니다 (슬라이스는 항상 포인터 타입으로 존재해야 함을 기억하세요).
+슬라이스에 대한 포인터(모든 DST에 대한 포인터와 마찬가지로)는 펫 포인터(fat pointer)라고도
+하며, 단순한 포인터보다 두 개의 워드로 구성되어 있으며 포인터에서 데이터로의 포인터 및
+페이로드를 포함합니다. 슬라이스의 경우 페이로드는 슬라이스의 길이입니다.
 
-So in the example above, the pointer `a` will be 128 bits wide (on a 64 bit
-system). The first 64 bits will store the address of the `1` in the sequence
-`[1, 2, 3, 4]`, and the second 64 bits will contain `4`. Usually, as a Rust
-programmer, these fat pointers can just be treated as regular pointers. But it
-is good to know about (it can affect the things you can do with casts, for
-example).
+따라서 위의 예시에서 포인터 `a`는 64비트 시스템에서 128비트 너비를 가집니다. 첫 번째
+64비트는 시퀀스 `[1, 2, 3, 4]`의 1의 주소를 저장하고, 두 번째 64비트에는 4가 저장됩니다.
+일반적으로 Rust 프로그래머로서 이 펫 포인터는 일반 포인터처럼 취급할 수 있습니다. 하지만
+이에 대해 알아두는 것이 좋습니다(캐스트에 영향을 미칠 수 있음).
 
+### 슬라이싱 표기와 범위
 
-### Slicing notation and ranges
-
-A slice can be thought of as a (borrowed) view of an array. So far we have only
-seen a slice of the whole array, but we can also take a slice of part of an
-array. There is a special notation for this which is like the indexing
-syntax, but takes a range instead of a single integer. E.g., `a[0..4]`, which
-takes a slice of the first four elements of `a`. Note that the range is
-exclusive at the top and inclusive at the bottom. Examples:
+슬라이스는 배열의 (참조된) 뷰로 생각할 수 있습니다. 지금까지는 전체 배열의 슬라이스만을
+보았지만, 배열의 일부분을 슬라이스로 가져올 수도 있습니다. 이를 위한 특별한 표기법이 
+있으며, 인덱싱 구문과 유사하지만 단일 정수 대신 범위를 사용합니다. 예를 들어 `a[0..4]`는 
+`a`의 첫 네 요소로 이루어진 슬라이스를 가져옵니다. 주의해야 할 점은 범위의 상단은 
+배제(exclusive)되고 하단은 포함(inclusive)된다는 것입니다. 몇 가지 예시를 살펴보겠습니다:
 
 ```rust
 let a: [i32; 4] = [1, 2, 3, 4];
-let b: &[i32] = &a;   // Slice of the whole array.
-let c = &a[0..4];     // Another slice of the whole array, also has type &[i32].
-let c = &a[1..3];     // The middle two elements, &[i32].
-let c = &a[1..];      // The last three elements.
-let c = &a[..3];      // The first three elements.
-let c = &a[..];       // The whole array, again.
-let c = &b[1..3];     // We can also slice a slice.
+let b: &[i32] = &a;    // 전체 배열의 슬라이스
+let c = &a[0..4];      // 전체 배열의 다른 슬라이스, &[i32] 형태를 가짐
+let c = &a[1..3];      // 중간 두 요소, &[i32] 형태를 가짐
+let c = &a[1..];       // 마지막 세 요소
+let c = &a[..3];       // 처음 세 요소
+let c = &a[..];        // 전체 배열
+let c = &b[1..3];      // 슬라이스의 슬라이스를 할 수도 있음
 ```
 
-Note that in the last example, we still need to borrow the result of slicing.
-The slicing syntax produces an unborrowed slice (type: `[i32]`) which we must
-then borrow (to give a `&[i32]`), even if we are slicing a borrowed slice.
+마지막 예시에서도 슬라이싱 결과를 대여해야 하는 점에 주의해야 합니다. 슬라이싱 구문은 
+대여되지 않은 슬라이스(`[i32]` 형태)를 생성하며, 이를 대여해야 한다는 점을 명심해야 
+합니다. 따라서 대여된 슬라이스(`&[i32]` 형태)를 얻기 위해 대여해주어야 합니다. 심지어 
+대여된 슬라이스를 슬라이싱할 때에도 동일한 원리가 적용됩니다.
 
-Range syntax can also be used outside of slicing syntax. `a..b` produces an
-iterator which runs from `a` to `b-1`. This can be combined with other iterators
-in the usual way, or can be used in `for` loops:
+범위 구문은 슬라이싱 구문 이외에도 사용할 수 있습니다. `a..b`는 `a`부터 `b-1`까지 실행되는
+반복자(iterator)를 생성합니다. 이는 다른 반복자와 함께 일반적인 방식으로 결합하거나 `for`
+루프에서 사용할 수 있습니다:
 
 ```rust
-// Print all numbers from 1 to 10.
+// 1부터 10까지의 모든 숫자를 출력합니다.
 for i in 1..11 {
     println!("{}", i);
 }
 ```
 
-## Vecs
+## `Vec`
 
-A vector is heap allocated and is an owning reference. Therefore (and like
-`Box<_>`), it has move semantics. We can think of a fixed length array
-analogously to a value, a slice to a borrowed reference. Similarly, a vector in
-Rust is analogous to a `Box<_>` pointer.
+벡터(`Vec<_>`)는 힙에 할당되며 소유 참조(owning reference)입니다. 따라서 (`Box<_>`와
+마찬가지로) 이동 시맨틱스(move semantics)를 가지고 있습니다. 우리는 고정 길이 배열을 값과
+유사하게 생각할 수 있으며, 슬라이스는 대여된 참조(borrowed reference)에 유사합니다.
+마찬가지로, Rust에서의 벡터는 `Box<_>` 포인터와 유사한 개념입니다.
 
-It helps to think of `Vec<_>` as a kind of smart pointer, just like `Box<_>`,
-rather than as a value itself. Similarly to a slice, the length is stored in the
-'pointer', in this case the 'pointer' is the Vec value.
+`Vec<_>`을 `Box<_>`와 마찬가지로 스마트 포인터의 한 형태로 생각하는 것이 도움이 됩니다.
+슬라이스와 마찬가지로 길이는 '포인터'에 저장되는데, 이 경우 '포인터'는 `Vec` 값 
+자체입니다.
 
-A vector of `i32`s has type `Vec<i32>`. There are no vector literals, but we can
-get the same effect by using the `vec!` macro. We can also create an empty
-vector using `Vec::new()`:
+`i32`의 벡터는 `Vec<i32>` 타입을 가집니다. 벡터 리터럴은 없지만 `vec!` 매크로를 사용하여
+동일한 효과를 얻을 수 있습니다. 또한 `Vec::new()`를 사용하여 빈 벡터를 생성할 수 있습니다:
 
 ```rust
-let v = vec![1, 2, 3, 4];      // A Vec<i32> with length 4.
-let v: Vec<i32> = Vec::new();  // An empty vector of i32s.
+let v = vec![1, 2, 3, 4];      // 길이가 4인 Vec<i32>.
+let v: Vec<i32> = Vec::new();  // 빈 i32 벡터.
 ```
 
-In the second case above, the type annotation is necessary so the compiler can
-know what the vector is a vector of. If we were to use the vector, the type
-annotation would probably not be necessary.
+위의 두 번째 경우에는 타입 주석(type annotation)이 필요하며, 컴파일러가 벡터가 어떤 타입의
+벡터인지 알 수 있도록 해줍니다. 벡터를 사용한다면 타입 주석은 필요하지 않을 수도 있습니다.
 
-Just like arrays and slices, we can use indexing notation to get a value from
-the vector (e.g., `v[2]`). Again, these are bounds checked. We can also use
-slicing notation to take a slice of a vector (e.g., `&v[1..3]`).
+배열과 슬라이스와 마찬가지로 벡터에서 값을 가져오기 위해 인덱싱 표기법(`v[2]`)을 사용할 수
+있습니다. 다시 말하지만, 이는 경계 검사가 수행됩니다. 또한 슬라이싱 표기법(`&v[1..3]`)을
+사용하여 벡터의 슬라이스를 가져올 수 있습니다.
 
-The extra feature of vectors is that their size can change - they can get longer
-or shorter as needed. For example, `v.push(5)` would add the element `5` to the
-end of the vector (this would require that `v` is mutable). Note that growing a
-vector can cause reallocation, which for large vectors can mean a lot of
-copying. To guard against this you can pre-allocate space in a vector using
-`with_capacity`, see the [Vec docs](https://doc.rust-lang.org/std/vec/struct.Vec.html)
-for more details.
+벡터의 추가적인 특징은 크기를 변경할 수 있다는 것입니다. 필요에 따라 벡터의 크기를 
+늘리거나 줄일 수 있습니다. 예를 들어, `v.push(5)`를 사용하면 벡터의 끝에 요소 5가 
+추가됩니다 (이 경우 `v`가 가변적(mutable)이어야 합니다). 벡터의 크기를 늘리는 경우 메모리
+재할당이 발생할 수 있으며, 큰 벡터의 경우 많은 복사 작업이 필요할 수 있습니다. 이를 
+방지하기 위해 `with_capacity`를 사용하여 벡터에 미리 공간을 할당할 수 있습니다.
 
+더 자세한 내용은 [벡터 문서](https://doc.rust-lang.org/std/vec/struct.Vec.html)를 
+참고하세요. 
 
-## The `Index` traits
+## `Index` 트레이트
 
-Note for readers: there is a lot of material in this section that I haven't
-covered properly yet. If you're following the tutorial, you can skip this
-section, it is a somewhat advanced topic in any case.
+이 섹션에는 아직 제대로 다루지 않은 내용이 많이 포함되어 있습니다. 튜토리얼을 따라가고 
+계신다면 이 섹션은 건너뛰셔도 됩니다. 어쨌든 이는 다소 고급 주제입니다.
 
-The same indexing syntax used for arrays and vectors is also used for other
-collections, such as `HashMap`s. And you can use it yourself for your own
-collections. You opt-in to using the indexing (and slicing) syntax by
-implementing the `Index` trait. This is a good example of how Rust makes
-available nice syntax to user types, as well as built-ins (`Deref` for
-dereferencing smart pointers, as well as `Add` and various other traits, work in
-a similar way).
+배열과 벡터에 사용되는 동일한 인덱싱 구문은 `HashMap`과 같은 다른 컬렉션에도 사용됩니다.
+또한 사용자 정의 컬렉션에도 직접 사용할 수 있습니다. `Index` 트레잇을 구현함으로써 
+인덱싱(및 슬라이싱) 구문을 사용할 수 있습니다. 이는 Rust가 사용자 타입뿐만 아니라 내장
+타입에도 멋진 구문을 제공하는 방법의 좋은 예입니다 (`Deref`는 스마트 포인터를 역참조하는 
+데 사용되며, `Add` 및 다른 다양한 트레잇도 유사한 방식으로 작동합니다).
 
-The `Index` trait looks like
+Index 트레잇은 다음과 같이 정의됩니다.
 
 ```rust
 pub trait Index<Idx: ?Sized> {
@@ -222,16 +200,14 @@ pub trait Index<Idx: ?Sized> {
 }
 ```
 
-`Idx` is the type used for indexing. For most uses of indexing this is `usize`.
-For slicing this is one of the `std::ops::Range` types. `Output` is the type
-returned by indexing, this will be different for each collection. For slicing it
-will be a slice, rather than the type of a single element. `index` is a method
-which does the work of getting the element(s) out of the collection. Note that
-the collection is taken by reference and the method returns a reference to the
-element with the same lifetime.
+`Idx`는 인덱싱에 사용되는 타입입니다. 대부분의 인덱싱에는 `usize`가 사용됩니다. 슬라이싱의
+경우에는 `std::ops::Range` 타입 중 하나가 사용됩니다. `Output`은 인덱싱의 결과로 반환되는
+타입입니다. 이는 각 컬렉션마다 다를 것입니다. 슬라이싱의 경우, 단일 요소의 타입이 아닌
+슬라이스 타입이 될 것입니다. `index`는 컬렉션에서 요소를 가져오는 작업을 수행하는
+메서드입니다. 컬렉션은 참조로 가져오고 메서드는 동일한 라이프타임을 가진 요소의 참조를
+반환합니다.
 
-Let's look at the implementation for `Vec` to see how what an implementation
-looks like:
+`Vec`의 구현을 살펴보면 어떻게 구현되는지 알아보겠습니다.
 
 ```rust
 impl<T> Index<usize> for Vec<T> {
@@ -243,31 +219,29 @@ impl<T> Index<usize> for Vec<T> {
 }
 ```
 
-As we said above, indexing is done using `usize`. For a `Vec<T>`, indexing will
-return a single element of type `T`, thus the value of `Output`. The
-implementation of `index` is a bit weird - `(**self)` gets a view of the whole
-vec as a slice, then we use indexing on slices to get the element, and finally
-take a reference to it.
+위에서 설명한 대로, 인덱싱은 `usize`를 사용합니다. `Vec<T>`의 경우, 인덱싱은 타입 `T`의 
+단일 요소를 반환하므로 `Output`의 값을 가집니다. `index`의 구현은 약간 이상합니다. 
+(`**self`)는 슬라이스로 전체 벡터를 보는 뷰를 얻어온 다음, 슬라이스의 인덱싱을 사용하여 
+요소를 얻어온 다음, 그 요소에 대한 참조를 가져옵니다.
 
-If you have your own collections, you can implement `Index` in a similar way to
-get indexing and slicing syntax for your collection.
+자신만의 컬렉션이 있는 경우, 해당 컬렉션에 인덱싱 및 슬라이싱 구문을 얻기 위해 비슷한 
+방식으로 `Index`를 구현할 수 있습니다.
 
+## 초기화 문법
 
-## Initialiser syntax
+Rust에서 모든 데이터와 마찬가지로 배열과 벡터는 올바르게 초기화되어야 합니다. 종종 초기에
+값이 모두 0으로 채워진 배열이 필요하거나, 배열 리터럴 구문을 사용하는 것이 귀찮을 수 
+있습니다. 그래서 Rust는 지정된 값으로 채워진 배열을 초기화하는 간단한 문법적인 도움을 
+제공합니다: `[value; len]`. 예를 들어, 길이가 100이고 모든 요소가 0으로 채워진 배열을 
+생성하려면 `[0; 100]`을 사용할 수 있습니다.
 
-As with all data in Rust, arrays and vectors must be properly initialised. Often
-you just want an array full of zeros to start with and using the array literal
-syntax is a pain. So Rust gives you a little syntactic sugar to initialise an
-array full of a given value: `[value; len]`. So for example to create an array
-with length 100 full of zeros, we'd use `[0; 100]`.
+마찬가지로, 벡터에 대해서도 `vec![42; 100]`은 값이 42인 100개의 요소를 가진 벡터를
+생성합니다.
 
-Similarly for vectors, `vec![42; 100]` would give you a vector with 100
-elements, each with the value 42.
-
-The initial value is not limited to integers, it can be any expression. For
-array initialisers, the length must be an integer constant expression. For
-`vec!`, it can be any expression with type `usize`.
+초기 값은 정수에 제한되지 않으며, 모든 표현식이 될 수 있습니다. 배열 초기화에 대해서는
+길이는 정수 상수 표현식이어야 합니다. `vec!`의 경우, 타입이 `usize`인 모든 표현식을 사용할 
+수 있습니다.
 
 
-[^1]: In C++11 there is `std::array<T, N>` that provides boundary checking when
-`at()` method is used.
+[^1]: C++11에서는 `std::array<T, N>`이 제공되는데, 이는 `at()` 메서드를 사용할 때 경계 
+검사를 제공합니다.

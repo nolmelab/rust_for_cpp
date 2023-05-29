@@ -1,37 +1,34 @@
-# Destructuring pt2 - match and borrowing
+# 분해 (Destructuring) - match와 빌림
 
-When destructuring there are some surprises in store where borrowing is
-concerned. Hopefully, nothing surprising once you understand borrowed references
-really well, but worth discussing (it took me a while to figure out, that's for
-sure. Longer than I realised, in fact, since I screwed up the first version of
-this blog post).
+패턴 매칭 시 빌림에 관련된 부분에서는 몇 가지 예기치 않은 점들이 있습니다. 대여 참조에 
+대해 정말 잘 이해하면 크게 놀라운 점은 없을 것입니다. 하지만 이에 대해서는 논의가
+필요합니다. 실제로 제가 이해하는 데 꽤 오랜 시간이 걸렸으며, 사실 처음에는 이 블로그 글의
+첫 번째 버전을 망쳤습니다 (잘 이해를 못 해서).
 
-Imagine you have some `&Enum` variable `x` (where `Enum` is some enum type). You
-have two choices: you can match `*x` and list all the variants (`Variant1 =>
-...`, etc.) or you can match `x` and list reference to variant patterns
-(`&Variant1 => ...`, etc.). (As a matter of style, prefer the first form where
-possible since there is less syntactic noise). `x` is a borrowed reference and
-there are strict rules for how a borrowed reference can be dereferenced, these
-interact with match expressions in surprising ways (at least surprising to me),
-especially when you are modifying an existing enum in a seemingly innocuous way
-and then the compiler explodes on a match somewhere.
+`Enum`이라는 어떤 열거형 타입을 가진 `&Enum` 변수 `x`가 있다고 상상해 보세요. 이때 두 가지
+선택지가 있습니다. `*x`를 매칭하고 모든 변형을 나열할 수 있습니다(`Variant1 => ...` 등).
+또는 `x`를 매칭하고 변형 패턴에 대한 참조를 나열할 수 있습니다(`&Variant1 => ...` 등).
+(가능한 경우 첫 번째 형태를 선호하는 것이 스타일상 좋습니다. 구문적인 잡음이 적기
+때문입니다.) 
 
-Before we get into the details of the match expression, lets recap Rust's rules
-for value passing. In C++, when assigning a value into a variable or passing it
-to a function there are two choices - pass-by-value and pass-by-reference. The
-former is the default case and means a value is copied either using a copy
-constructor or a bitwise copy. If you annotate the destination of the parameter
-pass or assignment with `&`, then the value is passed by reference - only a
-pointer to the value is copied and when you operate on the new variable, you are
-also operating on the old value.
+`x`는 대여 참조이며 대여 참조가 어떻게 역참조될 수 있는지에는 엄격한 규칙이 있습니다. 이
+규칙은 매치 표현식과 예상치 못한 방식으로 상호작용합니다(적어도 저에게는 예상치 못한
+방식입니다). 특히, 기존의 열거형을 보기에는 문제가 없는 방식으로 수정하고 나서 어딘가의
+매치에서 컴파일러가 폭발(컴파일 오류로 메세지를 잔뜩 내보내는 폭발)하는 경우가 있을 수
+있습니다.
 
-Rust has the pass-by-reference option, although in Rust the source as well as
-the destination must be annotated with `&`. For pass-by-value in Rust, there are
-two further choices - copy or move. A copy is the same as C++'s semantics
-(except that there are no copy constructors in Rust). A move copies the value
-but destroys the old value - Rust's type system ensures you can no longer access
-the old value. As examples, `i32` has copy semantics and `Box<i32>` has move
-semantics:
+매치 표현식에 대한 자세한 내용에 들어가기 전에, Rust의 값 전달 규칙에 대해 다시 한 번
+요약해보겠습니다. C++에서 변수에 값을 할당하거나 함수에 전달할 때는 두 가지 선택지가
+있습니다. 값에 대한 전달과 참조에 대한 전달입니다. 전자는 기본 동작이며 값은 복사 생성자
+또는 비트 단위 복사를 사용하여 복사됩니다. 매개변수의 대상을 &로 주석 처리하면 값이 참조에
+의해 전달됩니다. 값의 포인터만 복사되며 새 변수에서 작업을 수행할 때 원래 값도 변경됩니다.
+
+Rust에는 참조에 의한 전달 옵션이 있습니다. 그러나 Rust에서는 소스와 대상 모두 &를 붙여야 
+합니다. Rust에서 "값에 의한 전달"을 위해 두 가지 추가적인 선택지가 있습니다. 복사 또는
+이동입니다. 복사는 C++의 의미와 동일합니다 (Rust에는 복사 생성자가 없는 점을 제외하고).
+이동은 값을 복사하지만 이전 값은 소멸시킵니다. Rust의 타입 시스템은 더 이상 이전 값에
+액세스할 수 없도록 보장합니다. 예를 들어, i32는 복사 의미론을 가지고 있고, `Box<i32>`는 
+이동 의미론을 가지고 있습니다.
 
 ```rust
 fn foo() {
@@ -45,28 +42,25 @@ fn foo() {
 }
 ```
 
-You can also choose to have copy semantics for user-defined types
-by implementing the `Copy` trait. One straightforward way to do that is 
-to add `#[derive(Copy)]` before the definition of the `struct`. Not all
-user-defined types are allowed to implement the `Copy` trait. All fields of 
-a type must implement `Copy` and the type must not have a destructor. 
-Destructors probably need a post of their own, but for now, an object 
-in Rust has a destructor if it implements the `Drop`trait. 
-Just like C++, the destructor is executed just before an object is 
-destroyed.
+사용자 정의 타입에 대해서도 Copy 트레잇을 구현하여 복사 의미론을 선택할 수 있습니다. 
+간단한 방법은 struct 정의 앞에 #[derive(Copy)]를 추가하는 것입니다. 그러나 모든 사용자 
+정의 타입이 Copy 트레잇을 구현할 수 있는 것은 아닙니다. 타입의 모든 필드가 Copy를 구현해야
+하고, 타입 자체에 소멸자가 없어야 합니다. 소멸자는 나중에 자세히 다룰 주제이지만, 일단
+Rust에서 객체는 Drop 트레잇을 구현하면 소멸자를 가집니다. C++과 마찬가지로 소멸자는 객체가
+파괴되기 바로 직전에 실행됩니다.
 
-Now, it is important that a borrowed object is not moved, otherwise you would
-have a reference to the old object which is no longer valid. This is equivalent
-to holding a reference to an object which has been destroyed after going out of
-scope - it is a kind of dangling pointer. If you have a pointer to an object,
-there could be other references to it. So if an object has move semantics and
-you have a pointer to it, it is unsafe to dereference that pointer. (If the
-object has copy semantics, dereferencing creates a copy and the old object will
-still exist, so other references will be fine).
+정말 중요한 점은 대여된 객체는 이동되지 않아야 한다는 것입니다. 그렇지 않으면 더 이상
+유효하지 않은 이전 객체에 대한 참조가 생기게 됩니다. 이는 스코프를 벗어난 후 파괴된 객체에
+대한 참조를 유지하는 것과 동등한 상황으로, 이는 말 그대로 불안정한(dangling) 포인터입니다.
+객체에 대한 포인터가 있다면 다른 참조도 있을 수 있습니다. 따라서 객체가 이동 의미론을 
+가지고 있고 해당 객체에 대한 포인터가 있는 경우, 해당 포인터를 참조하는 것은 불안전합니다.
+(객체가 복사 의미론을 가지고 있다면, 참조를 역참조하면 새로운 복사본이 생성되고 이전 
+객체는 여전히 존재하므로 다른 참조는 괜찮습니다.)
 
-OK, back to match expressions. As I said earlier, if you want to match some `x`
-with type `&T` you can dereference once in the match clause or match the
-reference in every arm of the match expression. Example:
+자, 다시 match 표현식으로 돌아가겠습니다. 앞서 말한 대로, `x`가 타입 `&T`인 경우, `match`
+절에서 한 번 역참조하거나 `match` 표현식의 모든 분기에서 참조를 매칭할 수 있습니다. 
+
+예시 코드입니다:
 
 ```rust
 enum Enum1 {
@@ -91,23 +85,21 @@ fn foo(x: &Enum1) {
 }
 ```
 
-In this case you can take either approach because `Enum1` has copy semantics.
-Let's take a closer look at each approach: in the first approach we dereference
-`x` to a temporary variable with type `Enum1` (which copies the value in `x`)
-and then do a match against the three variants of `Enum1`. This is a 'one level'
-match because we don't go deep into the value's type. In the second approach
-there is no dereferencing. We match a value with type `&Enum1` against a
-reference to each variant. This match goes two levels deep - it matches the type
-(always a reference) and looks inside the type to match the referred type (which
-is `Enum1`).
+이 경우에는 어느 방법을 선택해도 괜찮습니다. 왜냐하면 `Enum1`은 복사 의미론을 가지고 있기
+때문입니다. 각 접근 방식을 자세히 살펴보겠습니다. 첫 번째 방법에서는 `x`를 `Enum1` 타입의
+임시 변수로 역참조하여(`x` 안의 값 복사) `Enum1`의 세 가지 변형과 매치를 수행합니다. 이는
+'한 단계' 매치로 간주됩니다. 즉, 값의 타입 구조에는 깊게 들어가지 않습니다.
 
-Either way, we must ensure that we (that is, the compiler) respect 
-Rust's invariants around moves and references - we must not move any
-part of an object if it is referenced. If the value being matched has copy
-semantics, that is trivial. If it has move semantics then we must make sure that
-moves don't happen in any match arm. This is accomplished either by ignoring
-data which would move, or making references to it (so we get by-reference
-passing rather than by-move).
+반면 두 번째 방법에서는 역참조 작업이 없습니다. `&Enum1` 타입의 값을 각 변형에 대한 참조와
+일치시킵니다. 이 매치는 두 단계로 이루어집니다. 먼저 외부 타입(참조)과 그 안에 있는 참조된
+타입(Enum1)을 매치합니다.
+
+어떤 방식이든, 우리(즉, 컴파일러)는 이동과 참조에 대한 Rust의 불변식을 준수해야 합니다. 
+참조되는 객체의 어떤 부분도 이동해서는 안 됩니다. 매치되는 값이 복사 의미론을 가진 
+경우에는 간단합니다. 하지만 이동 의미론을 가진 값인 경우, 어떤 매치 분기에서도 이동이
+발생하지 않도록 주의해야 합니다. 이를 위해서는 이동될 데이터를 무시하거나 해당 데이터에 
+대한 참조를 생성하여 (이동 대신 참조에 의한 전달을 얻기 위해) 이를 해결할 수 있습니다.
+
 
 ```rust
 enum Enum2 {
@@ -136,20 +128,21 @@ fn foo(x: &Enum2) {
 }
 ```
 
-In either approach we don't refer to any of the nested data, so none of it is
-moved. In the first approach, even though `x` is referenced, we don't touch its
-innards in the scope of the dereference (i.e., the match expression) so nothing
-can escape. We also don't bind the whole value (i.e., bind `*x` to a variable),
-so we can't move the whole object either.
+두 가지 접근 방식 모두에서 우리는 중첩된 데이터에 접근하지 않으므로 데이터는 이동하지
+않습니다. 첫 번째 접근 방식에서는 `x`가 참조되지만, 우리는 참조의 범위인 역참조 
+(즉, `match` 표현식의 범위) 내에서 내부 내용에 접근하지 않으므로 아무것도 노출되지 
+않습니다. 또한, 전체 값에 대한 바인딩 (즉, `*x`를 변수에 바인딩)을 수행하지 않으므로 
+전체 객체를 이동시킬 수도 없습니다.
 
-We can take a reference to any variant in the second match, but not in the
-dereferenced version. So, in the second approach replacing the second arm with `a
-@ &Var2 => {}` is OK (`a` is a reference), but under the first approach we
-couldn't write `a @ Var2 => {}` since that would mean moving `*x` into `a`. We
-could write `ref a @ Var2 => {}` (in which `a` is also a reference), although
-it's not a construct you see very often.
+두 번째 `match` 표현식에서는 어떤 variant에 대해서든 참조를 가져올 수 있지만, 역참조된
+버전에서는 그렇지 않습니다. 그래서 두 번째 접근 방식에서 두 번째 매치 팔을 
+`a @ &Var2 => {}`로 바꾸는 것은 괜찮습니다 (`a`는 참조입니다). 그러나 첫 번째 접근
+방식에서는 `a @ Var2 => {}`와 같이 작성할 수 없습니다. 왜냐하면 `*x`를 `a`로 이동시키는 
+것을 의미하기 때문입니다. `ref a @ Var2 => {}`와 같이 작성할 수는 있지만, 이는 자주 볼 수
+있는 구조는 아닙니다.
 
-But what about if we want to use the data nested inside `Var1`? We can't write:
+하지만 `Var1` 내부에 있는 데이터를 사용하려면 어떻게 해야 할까요? 우리는 다음과 같이 
+작성할 수 없습니다.
 
 ```rust
 match *x {
@@ -172,22 +165,28 @@ keyword to get a reference to the data in `Var1`: `&Var1(ref y) => {}`. That is
 OK, because now we are not dereferencing anywhere and thus not moving any part
 of `x`. Instead we are creating a pointer which points into the interior of `x`.
 
-Alternatively, we could destructure the Box (this match is going three levels
-deep): `&Var1(box y) => {}` (note `box` pattern syntax is experimental as of rustc 1.58 
-and is available only in nightly version of rustc). 
-This is OK because `i32` has copy semantics and `y`
-is a copy of the `i32` inside the `Box` inside `Var1` (which is 'inside' a
-borrowed reference). Since `i32` has copy semantics, we don't need to move any
-part of `x`. We could also create a reference to the int rather than copy it:
-`&Var1(box ref y) => {}`. Again, this is OK, because we don't do any
-dereferencing and thus don't need to move any part of `x`. If the contents of
-the Box had move semantics, then we could not write `&Var1(box y) => {}`, we
-would be forced to use the reference version. We could also use similar
-techniques with the first approach to matching, which look the same but without
-the first `&`. For example, `Var1(box ref y) => {}`.
+왜냐하면, 두 가지 경우 모두 `x`의 일부를 `y`로 이동하기 떄문입니다. 
 
-Now lets get more complex. Lets say you want to match against a pair of
-reference-to-enum values. Now we can't use the first approach at all:
+`Var1` 내부의 데이터를 사용하기 위해서는 `ref` 키워드를 사용할 수 있습니다: 
+`&Var1(ref y) => {}`. 이렇게 작성하는 것은 괜찮습니다. 왜냐하면 우리는 어디에서도 역참조를
+하지 않으며 따라서 `x`의 어떤 부분도 이동시키지 않기 때문입니다. 대신, 우리는 `x`의 내부를
+가리키는 포인터를 생성합니다.
+
+다른 방법으로는 `Box`를 해체하는 것도 가능합니다 (이 매치는 세 단계로 이루어집니다): 
+`&Var1(box y) => {}` (주의: `box` 패턴 구문은 rustc 1.58 기준으로 실험적인 기능으로, 
+nightly 버전의 rustc에서만 사용할 수 있습니다).
+
+이 경우 `i32`는 복사 의미론을 가지고 있고 `y`는 `Var1` 내부의 `Box` 안에 있는 `i32`의
+복사본입니다 (borrowed reference 안에 있는 것입니다). `i32`가 복사 의미를 가지고 있기 
+때문에 `x`의 어떤 부분도 이동시키지 않아도 됩니다. 또한 `int`에 대한 참조를 만들 수도
+있습니다: `&Var1(box ref y) => {}`. 다시 한 번, 이는 괜찮습니다. 왜냐하면 우리는 역참조를
+하지 않기 때문에 `x`의 어떤 부분도 이동시킬 필요가 없습니다. `Box`의 내용물이 이동 
+의미론을 가지고 있다면 `&Var1(box y) => {}`를 작성할 수 없으며, 참조 버전을 사용해야 
+합니다. 첫 번째 매치 접근 방법에서도 비슷한 기술을 사용할 수 있으며, 첫 번째 `&`를 
+제외하고 동일한 형태로 작성됩니다. 예를 들어, `Var1(box ref y) => {}`입니다.
+
+이제 더 복잡한 경우를 살펴보겠습니다. 참조된 열거형 값의 쌍에 대해 매치하고자 합니다. 
+이제는 첫 번째 접근 방식을 사용할 수 없습니다.
 
 ```rust
 fn bar(x: &Enum2, y: &Enum2) {
@@ -205,20 +204,20 @@ fn bar(x: &Enum2, y: &Enum2) {
 }
 ```
 
-The first approach is illegal because the value being matched is created by
-dereferencing `x` and `y` and then moving them both into a new tuple object. So
-in this circumstance, only the second approach works. And of course, you still
-have to follow the rules above for avoiding moving parts of `x` and `y`.
+첫 번째 접근 방식은 잘못된 방법입니다. 매치되는 값은 `x`와 `y`를 역참조한 다음 새로운 튜플
+객체로 이동시켜서 생성되기 때문에 문제가 발생합니다. 따라서 이러한 경우에는 두 번째 접근
+방식만 사용할 수 있습니다. 물론, 여전히 `x`와 `y`의 일부를 이동시키지 않도록 위에서 언급한
+규칙을 따라야 합니다.
 
-If you do end up only being able to get a reference to some data and you need
-the value itself, you have no option except to copy that data. Usually that
-means using `clone()`. If the data doesn't implement clone, you're going to have
-to further destructure to make a manual copy or implement clone yourself.
+만약 일부 데이터에 대해서만 참조를 얻을 수 있고 해당 데이터 자체가 필요한 경우, 그 
+데이터를 복사하는 것 이외의 선택지는 없습니다. 보통 `clone()`을 사용하여 데이터를
+복사합니다. 데이터가 `clone()`을 구현하지 않은 경우, 수동으로 복사하기 위해 추가적인 분해
+작업을 해야 하거나 직접 `clone()`을 구현해야 합니다.
 
-What if we don't have a reference to a value with move semantics, but the value
-itself. Now moves are OK, because we know no one else has a reference to the
-value (the compiler ensures that if they do, we can't use the value). For
-example,
+만약 이동 시맨틱스를 갖는 값에 대한 참조가 아닌 값 자체를 가지고 있다면 어떻게 될까요? 
+이 경우에는 이동 연산이 허용됩니다. 왜냐하면 다른 사람들이 해당 값에 대한 참조를 가지고 
+있지 않다는 것을 알기 때문입니다(만약 다른 사람들이 참조를 가지고 있다면 해당 값은 사용할 
+수 없도록 컴파일러가 보장합니다).
 
 ```rust
 fn baz(x: Enum2) {
@@ -229,20 +228,19 @@ fn baz(x: Enum2) {
 }
 ```
 
-There are still a few things to be aware of. Firstly, you can only move to one
-place. In the above example we are moving part of `x` into `y` and we'll forget
-about the rest. If we wrote `a @ Var1(y) => {}` we would be attempting to move
-all of `x` into `a` and part of `x` into `y`. That is not allowed, an arm like
-that is illegal. Making one of `a` or `y` a reference (using `ref a`, etc.) is
-not an option either, then we'd have the problem described above where we move
-whilst holding a reference. We can make both `a` and `y` references and then
-we're OK - neither is moving, so `x` remains intact and we have pointers to the
-whole and a part of it.
+아직 주의해야 할 몇 가지 사항이 있습니다. 첫째로, 한 곳으로만 값이 이동할 수 있습니다. 
+위의 예제에서는 `x`의 일부를 `y`로 이동하고 나머지는 무시합니다. 만약 `a @ Var1(y) => {}`와
+같이 작성한다면, `x` 전체를 `a`로 이동하고 `x`의 일부를 `y`로 이동하려고 시도합니다. 이는
+허용되지 않으며, 이런 형태의 매치 팔은 잘못된 구문입니다. `a`나 `y` 중 하나를 참조로 
+만드는 것(`ref a` 등)도 선택할 수 없습니다. 그렇게 되면 앞서 설명한 참조를 유지하면서
+이동하는 문제가 발생합니다. 대신 `a`와 `y`를 모두 참조로 만들면 문제가 해결됩니다. 이렇게
+하면 어느 쪽도 이동하지 않으므로 `x`는 그대로 유지되며, 전체 값과 일부에 대한 포인터를
+가지게 됩니다.
 
-Similarly (and more common), if we have a variant with multiple pieces of nested
-data, we can't take a reference to one datum and move another. For example if we
-had a `Var4` declared as `Var4(Box<int>, Box<int>)` we can have a match arm
-which references both (`Var4(ref y, ref z) => {}`) or a match arm which moves
-both (`Var4(y, z) => {}`) but you cannot have a match arm which moves one and
-references the other (`Var4(ref y, z) => {}`). This is because a partial move
-still destroys the whole object, so the reference would be invalid.
+마찬가지로 (더 일반적이고 흔한 경우), 여러 개의 중첩된 데이터를 포함하는 variant가 있는
+경우, 하나의 데이터를 참조로 가져가고 다른 데이터를 이동할 수는 없습니다. 예를 들어, 
+`Var4(Box<int>, Box<int>)`로 선언된 `Var4`가 있다고 가정해봅시다. 우리는 둘 모두를 
+참조하는 매치 (`Var4(ref y, ref z) => {}`)이나 둘 모두를 이동하는 매치(`Var4(y, z) => {}`)를
+가질 수 있지만, 하나는 이동하고 다른 하나는 참조하는 매치(`Var4(ref y, z) => {}`)는
+불가능합니다. 이는 부분적인 이동은 여전히 전체 객체를 파괴하기 때문에 참조가 유효하지 않게
+되기 때문입니다.

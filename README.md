@@ -1,121 +1,19 @@
-# Rust For Systems Programmers
+# 환영합니다!
 
-A Rust tutorial for experienced C and C++ programmers.
+C++ 프로그래머를 위한 러스트는 블로그 포스트를 모아둔 분의 영문 글을 번역하여 
+정리한 내용입니다. 블로그 스타일이라 따라가면서 배우기가 수월하지는 않습니다. 
+따라서, [Rust 이해와 연습](https://nolmelab.gitbook.io/rust-course)나 러스트 언어 책 
+등을 통해 어느 정도 이해를 다지고 봐야 합니다. 
 
-Jump to [contents](#contents).
-Jump to [contributing](#contributing).
+이 글들이 유용한 측면은 [그래프와 아레나](src/README.md)와 같이 실제 포인터들을 활용하여 
+뭔가를 작업하는 과정이나 러스트 내부를 좀 더 상세히 살펴보는데 있습니다. 
 
-This tutorial is intended for programmers who already know how pointers and
-references work and are used to systems programming concepts such as integer
-widths and memory management. We intend to cover, primarily, the differences
-between Rust and C++ to get you writing Rust programs quickly without lots of
-fluff you probably already know.
+[원문의 소개글](README_Origin.md)은 번역하지 않고 그래도 남겨 두었습니다.  
 
-Hopefully, Rust is a pretty intuitive language for C++ programmers. Most of the
-syntax is pretty similar. The big difference (in my experience) is that the
-sometimes vague concepts of good systems programming are strictly enforced by
-the compiler. This can be infuriating at first - there are things you want to
-do, but the compiler won't let you (at least in safe code), and sometimes these
-things *are* safe, but you can't convince the compiler of that. However, you'll
-quickly develop a good intuition for what is allowed. Communicating your own
-notions of memory safety to the compiler requires some new and sometimes
-complicated type annotations. But if you have a strong idea of lifetimes for
-your objects and experience with generic programming, they shouldn't be too
-tough to learn.
+번역은  DeepL로 진행하다가 ChatGPT를 사용했습니다. DeepL은 설명이 일관되지 않은 면이 있어 
+수정이 꽤 많았으나 ChatGPT는 거의 그대로 사용해도 좋을 만큼 설명이 괜찮았습니다. 오히려 
+더 많은 내용을 설명하거나 번역 중인 걸 가끔씩 잊어서 불편했습니다. 
 
-This tutorial started as a [series of blog posts](http://featherweightmusings.blogspot.co.nz/search/label/rust-for-c).
-Partly as an aid for me (@nrc) learning Rust (there is no better way to
-check that you have learnt something than to try and explain it to somebody
-else) and partly because I found the existing resources for learning Rust
-unsatisfactory - they spent too much time on the basics that I already knew and
-used higher level intuitions to describe concepts that could better be explained
-to me using lower level intuitions. Since then, the documentation for Rust has
-got *much* better, but I still think that existing C++ programmers are an
-audience who are a natural target for Rust, but are not particularly well
-catered for.
+기게 번역을 주로 사용한 내용이라 얼마나 도움이 될지는 잘 모르곘습니다. 그래도 부처님 오신날 
+연휴에 시간을 내서 정리해 보았습니다. 
 
-
-## Contents
-
-1. [Introduction - Hello world!](hello-world.md)
-1. [Control flow](control-flow.md)
-1. [Primitive types and operators](primitives.md)
-1. [Unique pointers](unique.md)
-1. [Borrowed pointers](borrowed.md)
-1. [Rc and raw pointers](rc-raw.md)
-1. [Data types](data-types.md)
-1. [Destructuring pt 1](destructuring.md)
-1. [Destructuring pt 2](destructuring-2.md)
-1. [Arrays and vecs](arrays.md)
-1. [Graphs and arena allocation](graphs/README.md)
-1. [Closures and first-class functions](closures.md)
-
-
-## Other resources
-
-* [The Rust book/guide](http://doc.rust-lang.org/book/) - the best place for
-  learning Rust in general and probably the best place to go for a second opinion
-  on stuff here or for stuff not covered.
-* [Rust API documentation](http://doc.rust-lang.org/std/index.html) - detailed
-  documentation for the Rust libraries.
-* [The Rust reference manual](https://doc.rust-lang.org/reference/) - a little
-  out of date in places, but thorough; good for looking up details.
-* [Discuss forum](http://users.rust-lang.org/) - general forum for discussion or
-  questions about using and learning Rust.
-* [StackOverflow Rust questions](https://stackoverflow.com/questions/tagged/rust) - answers
-  to many beginner and advanced questions about Rust, but be careful though - Rust
-  has changed *a lot* over the years and some of the answers might be very out of date.
-* [A Firehose of Rust](https://www.youtube.com/watch?v=IPmRDS0OSxM) - a recorded talk
-  introducing C++ programmers to how lifetimes, mutable aliasing, and move semantics work
-  in Rust
-
-
-## Contributing
-
-Yes please!
-
-If you spot a typo or mistake, please submit a PR, don't be shy! Please feel
-free to file [an issue](https://github.com/nrc/r4cppp/issues/new) for
-larger changes or for new chapters you'd like to see. I'd also be happy to see
-re-organisation of existing work or expanded examples, if you feel the tutorial
-could be improved in those ways.
-
-If you'd like to contribute a paragraph, section, or chapter please do! If you
-want ideas for things to cover, see the [list of issues](https://github.com/nrc/r4cppp/issues),
-in particular those tagged [new material](https://github.com/nrc/r4cppp/labels/new%20material).
-If you're not sure of something, please get in touch by pinging me here
-(@nrc) or on irc (nrc, on #rust or #rust-internals).
-
-
-### Style
-
-Obviously, the intended audience is C++ programmers. The tutorial should
-concentrate on things that will be new to experienced C++ programmers, rather
-than a general audience (although, I don't assume the audience is familiar with
-the most recent versions of C++). I'd like to avoid too much basic material and
-definitely avoid too much overlap with other resources, in particular the Rust
-guide/book.
-
-Work on edge case use cases (e.g., using a different build system from Cargo, or
-writing syntax extensions, using unstable APIs) is definitely welcome, as is
-in-depth work on topics already covered at a high level.
-
-I'd like to avoid recipe-style examples for converting C++ code to Rust code,
-but small examples of this kind are OK.
-
-Use of different formats (e.g., question and answer/FAQs, or larger worked
-examples) are welcome.
-
-I don't plan on adding exercises or suggestions for mini-projects, but if you're
-interested in that, let me know.
-
-I'm aiming for a fairly academic tone, but not too dry. All writing should be in
-English (British English, not American English; although I would be very happy
-to have localisations/translations into any language, including American
-English) and be valid GitHub markdown. For advice on writing style, grammar,
-punctuation, etc. see the Oxford Style Manual
-or [The Economist Style Guide](http://www.economist.com/styleguide/introduction).
-Please limit width to 80 columns. I am a fan of the Oxford comma.
-
-Don't feel like work has to be perfect to be submitted, I'm happy to edit and
-I'm sure other people will be in the future.

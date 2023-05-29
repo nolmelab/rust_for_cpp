@@ -1,46 +1,44 @@
-# Closures and first-class functions
+# 클로저와 일급 함수 (first-class fucntion)
 
-Closures and first-class and higher order functions are a core part of Rust. In
-C and C++ there are function pointers (and those weird member/method pointer
-things in C++ that I never got the hang of). However, they are used relatively
-rarely and are not very ergonomic. C++11 introduced lambdas, and these are
-pretty close to Rust closures, in particular they have a very similar
-implementation strategy.
 
-To start with, I want to establish some intuition for these things. Then, we'll
-dive in to the details.
+클로저(Closures)와 일급 함수(First-class functions) 및 고차 함수(Higher-order functions)는
+러스트(Rust)의 핵심적인 개념입니다. C 및 C++에서는 함수 포인터와 C++의 멤버/메서드 
+포인터가 있지만, 이러한 개념들은 상대적으로 드물게 사용되며 편의성이 떨어집니다. 
+C++11에서는 람다(lambda)가 소개되었는데, 이는 러스트의 클로저와 매우 유사하며 특히 구현
+전략에서 많은 공통점을 가지고 있습니다.
 
-Lets say we have a function `foo`: `pub fn foo() -> u32 { 42 }`. Now let's
-imagine another function `bar` which takes a function as an argument (I'll leave
-`bar`'s signature for later): `fn bar(f: ...) { ... }`. We can pass `foo` to
-`bar` kind of like we would pass a function pointer in C: `bar(foo)`. In the
-body of `bar` we can call `f` as if it were a function: `let x = f();`.
+우선, 직관을 형성하기 위해 시작하겠습니다. `pub fn foo() -> u32 { 42 }`와 같은 함수 
+`foo`가 있다고 가정해 봅시다. 이제 함수를 인자로 받는 다른 함수 `bar`를 상상해보겠습니다
+(나중에 `bar`의 시그니처를 설명하겠습니다): `fn bar(f: ...) { ... }`. 우리는 C에서 함수
+포인터를 전달하는 것과 유사하게 `foo`를 `bar`에 전달할 수 있습니다: `bar(foo)`. `bar`의
+본문에서는 마치 함수처럼 `f`를 호출할 수 있습니다: `let x = f();`.
 
-We say that Rust has first-class functions because we can pass them around and
-use them like we can with other values. We say `bar` is a higher-order function
-because it takes a function as an argument, i.e., it is a function that operates
-on functions.
+러스트에서는 함수를 다른 값들과 마찬가지로 전달하고 사용할 수 있으므로 
+일급 함수(first-class functions)를 가지고 있다고 말합니다. 함수를 인자로 받는 함수를 
+고차 함수(higher-order function)라고 합니다.
 
-Closures in Rust are anonymous functions with a nice syntax. A closure `|x| x +
-2` takes an argument and returns it with `2` added. Note that we don't have to
-give types for the arguments to a closure (they can usually be inferred). We
-also don't need to specify a return type. If we want the closure body to be more
-than just one expression, we can use braces: `|x: i32| { let y = x + 2; y }`. We
-can pass closures just like functions: `bar(|| 42)`.
+러스트의 클로저는 익명 함수로서 아름다운 문법을 가지고 있습니다. `|x| x + 2`와 같은 
+클로저는 인자를 받아 2를 더한 값을 반환합니다. 클로저의 인자에 대해 타입을 지정할 필요가
+없으며 (일반적으로 추론이 가능합니다), 반환 타입을 명시할 필요도 없습니다. 클로저 본문이
+하나의 표현식 이상이 되는 경우 중괄호를 사용할 수 있습니다: 
+`|x: i32| { let y = x + 2; y }`. 
+우리는 클로저를 함수처럼 전달할 수 있습니다: `bar(|| 42)`.
 
-The big difference between closures and other functions is that closures capture
-their environment. This means that we can refer to variables outside the closure
-from the closure. E.g.,
+
+클로저와 다른 함수들 사이의 큰 차이점은 클로저가 자신의 환경을 캡처한다는 것입니다. 이는
+클로저 내부에서 클로저 외부의 변수를 참조할 수 있다는 의미입니다. 
+
+예를 들어:
 
 ```rust
 let x = 42;
 bar(|| x);
 ```
 
-Note how `x` is in scope in the closure.
+여기서 `x`는 클로저 내부에서 볼 수 있습니다. 
 
-We've seen closures before, used with iterators, and this is a common use case
-for them. E.g., to add a value to each element of a vector:
+우리는 이전에 이터레이터(반복자)와 함께 사용되는 클로저를 보았으며, 이는 클로저의 일반적인
+사용 사례입니다. 예를 들어, 벡터의 각 요소에 값을 더하는 경우:
 
 ```rust
 fn baz(v: Vec<i32>) -> Vec<i32> {
@@ -49,9 +47,9 @@ fn baz(v: Vec<i32>) -> Vec<i32> {
 }
 ```
 
-Here `x` is an argument to the closure, each member of `v` will be passed as an
-`x`. `z` is declared outside of the closure, but because it's a closure, `z` can
-be referred to. We could also pass a function to map:
+여기서 `x`는 클로저의 인자이며, `v`의 각 멤버가 `x`로 전달됩니다. `z`는 클로저 외부에서
+선언되었지만, 클로저이기 때문에 `z`를 참조할 수 있습니다. 또한 함수를 `map`에 전달할 수도
+있습니다:
 
 ```rust
 fn add_two(x: i32) -> i32 {
@@ -63,9 +61,9 @@ fn baz(v: Vec<i32>) -> Vec<i32> {
 }
 ```
 
-Note that Rust also allows declaring functions inside of functions. These are
-*not* closures - they can't access their environment. They are merely a
-convenience for scoping.
+Rust는 또한 함수 내부에서 함수를 선언할 수 있는 기능을 제공합니다. 이러한 함수들은 
+클로저가 아닙니다. 즉, 자신의 환경에 접근할 수 없습니다. 이는 단순히 스코핑을 위한 
+편의성을 제공하는 것입니다.
 
 ```rust
 fn qux(x: i32) {
@@ -77,9 +75,9 @@ fn qux(x: i32) {
 }
 ```
 
-## Function types
+## 함수 타잎
 
-Lets introduce a new example function:
+새로운 예제 함수를 소개해 보겠습니다:
 
 ```rust
 fn add_42(x: i32) -> i64 {
@@ -87,35 +85,33 @@ fn add_42(x: i32) -> i64 {
 }
 ```
 
-As we saw before, we can store a function in a variable: `let a = add_42;`. The
-most precise type of `a` cannot be written in Rust. You'll sometimes see the
-compiler render it as `fn(i32) -> i64 {add_42}` in error messages. Each function
-has its own unique and anonymous type. `fn add_41(x: i32) -> i64` has a different
-type, even though it has the same signature.
+우리는 이전에 함수를 변수에 저장할 수 있다는 것을 알아보았습니다: `let a = add_42;`. `a`의
+가장 정확한 타입은 Rust에서 작성할 수 없습니다. 때로는 컴파일러가 오류 메시지에서 
+`fn(i32) -> i64 {add_42}`와 같이 렌더링합니다. 각 함수는 고유하고 익명의 타입을 갖습니다. 
+`fn add_41(x: i32) -> i64`는 동일한 시그니처를 갖고 있지만 다른 타입입니다.
 
-We can write less precise types, for example, `let a: fn(i32) -> i64 = add_42;`.
-All function types with the same signature can be coerced to a `fn` type
-(which can be written by the programmer).
+덜 정확한 타입을 작성할 수도 있습니다. 예를 들어, `let a: fn(i32) -> i64 = add_42;`와 같이
+작성할 수 있습니다. 동일한 시그니처를 가진 모든 함수 타입은 프로그래머가 작성할 수 있는 
+`fn` 타입으로 강제(coerce)될 수 있습니다.
 
-`a` is represented by the compiler as a function pointer, however, if the
-compiler knows the precise type, it doesn't actually use that function pointer.
-A call like a() is statically dispatched based on the type of a. If the
-compiler doesn't know the precise type (e.g., it only knows the fn type), then
-the call is dispatched using the function pointer in the value.
+`a`는 컴파일러에 의해 함수 포인터로 표현됩니다. 그러나 컴파일러가 정확한 타입을 알고 
+있다면 실제로 그 함수 포인터를 사용하지 않습니다. `a()`와 같은 호출은 `a`의 타입을 
+기반으로 정적 디스패치(static dispatch)됩니다. 컴파일러가 정확한 타입을 알지 못하는 경우
+(예: `fn` 타입만 알고 있는 경우), 호출은 값의 함수 포인터를 사용하여 디스패치됩니다.
 
-There are also `Fn` types (note the capital 'F'). These `Fn` types are bounds,
-just like traits (in fact they *are* traits, as we'll see later). `Fn(i32) -> i64`
-is a bound on the types of all function-like objects with that signature. When
-we take a reference to a function pointer, we're actually creating a trait
-object which is represented by a fat pointer (see DSTs).
+또한 `Fn` 타입 (대문자 'F'로 표기)이 있습니다. 이 `Fn` 타입은 트레잇처럼 제약(bound)입니다
+(사실, 우리가 나중에 볼 것처럼 실제로는 트레잇입니다). `Fn(i32) -> i64`은 해당 시그니처를
+갖는 모든 함수와 유사한 객체의 타입에 대한 제약입니다. 함수 포인터에 대한 참조를 가져올 때, 
+실제로는 트레잇 객체를 생성하고, 이는 팻 포인터(fat pointer)로 표현됩니다 
+(DST - 동적 크기 타잎을 참조하세요).
 
-To pass a function to another function, or to store the function in a field, we
-must write a type. We have several choices, we can either use either a `fn` type
-or a `Fn` type. The latter is better because it includes closures (and
-potentially other function-like things), whereas `fn` types don't. The `Fn`
-types are dynamically sized which means we cannot use them as value types. We
-must either pass function objects or use generics. Let's look at the generic
-approach first. For example,
+다른 함수로 함수를 전달하거나 함수를 필드에 저장하려면 타입을 작성해야 합니다. 여러 가지
+선택 사항이 있습니다. `fn` 타입이나 `Fn` 타입을 사용할 수 있습니다. 후자가 더 좋습니다.
+왜냐하면 클로저(그리고 다른 함수와 유사한 것들)도 포함하기 때문이지만 `fn` 타입은 포함하지
+않기 때문입니다. `Fn` 타입은 동적으로 크기가 결정되므로 값을 타입으로 사용할 수 없습니다.
+함수 객체를 전달하거나 제네릭을 사용해야 합니다. 먼저 제네릭 접근 방식을 살펴보겠습니다.
+
+예를 들어,
 
 ```rust
 fn bar<F>(f: F) -> i64
@@ -125,53 +121,81 @@ fn bar<F>(f: F) -> i64
 }
 ```
 
-`bar` takes any function with the signature `Fn(i32) -> i64`, i.e., we can
-instantiate the `F` type parameter with any function-like type. We could call
-`bar(add_42)` to pass `add_42` to `bar` which would instantiate `F` with
-`add_42`'s anonymous type. We could also call `bar(add_41)` and that would work
-too.
+`bar`는 `Fn(i32) -> i64` 시그니처를 갖는 모든 함수를 받습니다. 즉, `F` 타입 매개변수를 
+모든 함수와 유사한 타입으로 인스턴스화할 수 있습니다. `bar(add_42)`를 호출하여 `add_42`를
+`bar`에 전달할 수 있으며, 이는 `F`를 `add_42`의 익명 타입으로 인스턴스화합니다. 
+`bar(add_41)`을 호출하여도 동작합니다.
 
-You can also pass closures to `bar`, e.g., `bar(|x| x as i64)`. This works
-because closure types are also bounded by the `Fn` bound matching their
-signature (like functions, each closure has it's own anonymous type).
+`bar` 함수에는 클로저도 전달할 수 있습니다. 예를 들어 `bar(|x| x as i64)`와 같이 사용할 수
+있습니다. 클로저 타입은 시그니처에 맞춰 `Fn` 제한에 의해 제한(bound)되기 때문에 이 작업이
+가능합니다. (함수와 마찬가지로 각각의 클로저는 고유한 익명 타입을 갖습니다).
 
-Finally, you can pass references to functions or closures too: `bar(&add_42)` or
-`bar(&|x| x as i64)`.
+마지막으로 함수나 클로저에 대한 참조를 전달할 수도 있습니다. `bar(&add_42)`나 
+`bar(&|x| x as i64)`와 같이 사용할 수 있습니다.
 
-One could also write `bar` as `fn bar(f: &Fn(i32) -> i64) ...`. These two
-approaches (generics vs a function/trait object) have quite different semantics.
-In the generics case, `bar` will be monomorphised so when code is generated, the
-compiler know the exact type of `f`, that means it can be statically dispatched.
-If using a function object, the function is not monomorphised. The exact type of
-`f` is not known, and so the compiler must generate a virtual dispatch. The
-latter is slower, but the former will produce more code (one monomorphised
-function per type parameter instance).
+또한 `bar`를 `fn bar(f: &Fn(i32) -> i64) ...`로 작성할 수도 있습니다. 이 두 가지 접근 방식
+(제네릭 vs 함수/트레이트 객체)은 매우 다른 의미를 갖습니다. 제네릭 접근 방식에서 `bar`는
+단일 타잎 코드 생성(monomorphization)을 합니다. 따라서 코드가 생성될 때 컴파일러는 `f`의
+정확한 타입을 알기 때문에 정적 디스패치가 가능합니다. 함수 객체를 사용하는 경우 함수는 
+모노모피즈 되지 않습니다. `f`의 정확한 타입이 알려지지 않으므로 컴파일러는 가상 디스패치를
+생성해야 합니다. 후자는 더 느리지만, 전자는 더 많은 코드를 생성합니다 (타입 매개변수
+인스턴스마다 모노모피즈된 함수 하나).
 
-There are actually more function traits than just `Fn`; there are `FnMut` and
-`FnOnce` too. These are used in the same way as `Fn`, e.g., `FnOnce(i32) ->
-i64`. A `FnMut` represents an object which can be called and can be mutated
-during that call. This doesn't apply to normal functions, but for closures it
-means the closure can mutate its environment. `FnOnce` is a function which can
-only be called (at most) once. Again, this is only relevant for closures.
+실제로 `Fn` 이외에도 `FnMut`와 `FnOnce`와 같은 더 많은 함수 트레이트가 있습니다. 이들은
+`FnOnce(i32) -> i64`와 같은 방식으로 사용됩니다. `FnMut`은 호출될 수 있고 호출 중에 변경될
+수 있는 객체를 나타냅니다. 이는 일반 함수에는 적용되지 않지만, 클로저에는 클로저가 자신의 
+환경을 변경할 수 있음을 의미합니다. `FnOnce`은 호출이 한 번만 가능한 함수를 나타냅니다. 
+다시 한 번, 이는 클로저에만 해당됩니다.
 
-`Fn`, `FnMut`, and `FnOnce` are in a sub-trait hierarchy. `Fn`s are `FnMut`s
-(because one can call a `Fn` function with permission to mutate and no harm is
-done, but the opposite is not true). `Fn`s and `FnMut`s are `FnOnce`s (because
-there is no harm done if a regular function is only called once, but not the
-opposite).
+`Fn`, `FnMut`, `FnOnce`은 서브 트레이트 계층(상속 계층)에 속합니다. `Fn`은 `FnMut`입니다
+(`Fn` 함수는 변경 권한을 부여받고 아무런 해를 입히지 않기 때문에), 그리고 `Fn`과 `FnMut`은 
+`FnOnce`입니다 (일반 함수가 한 번만 호출되는 것에는 해를 입히지 않기 때문입니다).
 
-So, to make a higher-order function as flexible as possible, you should use the
-`FnOnce` bound, rather than the `Fn` bound (or use the `FnMut` bound if you must
-call the function more than once).
+가능한 한 유연한 고차 함수를 만들기 위해서는 FnOnce 제한을 사용하는 것이 좋습니다. `Fn`
+제한보다는 `FnOnce` 제한을 사용하는 것이 좋습니다. (함수를 한 번 이상 호출해야 하는 경우
+`FnMut` 제한을 사용할 수도 있습니다).
 
+### 메서드
 
-### Methods
+Rust는 메서드를 함수처럼 다룰 수 있으며 유사한 방식으로 작업할 수 있습니다. 메서드에 대한
+포인터를 사용하거나 변수에 저장하고 다른 함수에 인수로 전달할 수 있습니다. 그러나 메서드를
+함수처럼 다룰 때는 UFCS(Universal Function Call Syntax)라고 하는 완전히 명시적인 이름 
+형식을 사용해야 합니다.
 
-You can use methods in the same way as functions - take pointers to them store
-them in variables, etc. You can't use the dot syntax, you must explicitly name
-the method using the fully explicit form of naming (sometimes called UFCS for
-universal function call syntax). The `self` parameter is the first argument to
-the method. E.g.,
+UFCS에서는 메서드를 명시적으로 지정하고 해당 메서드가 속하는 유형 또는 트레이트를 접두사로
+제공해야 합니다. 메서드의 `self` 매개변수는 함수로 사용할 때 첫 번째 인수가 됩니다.
+
+다음은 이를 설명하는 예시입니다:
+
+```rust
+struct Calculator {
+    value: i32,
+}
+
+impl Calculator {
+    fn add(&mut self, x: i32) {
+        self.value += x;
+    }
+}
+
+fn main() {
+    let mut calc = Calculator { value: 0 };
+
+    // 도트 구문을 사용하여 메서드 호출
+    calc.add(5);
+
+    // UFCS를 사용하여 함수처럼 메서드 호출
+    Calculator::add(&mut calc, 5);
+}
+```
+
+위 예시에서 `add`는 `Calculator` 구조체에 정의된 메서드입니다. 우리는 도트 
+구문(`calc.add(5)`)을 사용하거나 UFCS(`Calculator::add(&mut calc, 5)`)를 사용하여 호출할 
+수 있습니다. UFCS를 사용할 때는 명시적으로 유형(Calculator)을 지정하고 첫 번째 인수로 
+`&mut calc`를 전달합니다.
+
+이를 통해 메서드를 함수처럼 다룰 수 있으며 코드에서 사용하고 전달하는 방식에 유연성을 
+제공합니다.
 
 ```rust
 struct Foo;
@@ -200,11 +224,12 @@ fn main() {
 ```
 
 
-### Generic functions
+### 일반(제네릭) 함수
 
-You can't take a pointer to a generic function and there is no way to express a
-generic function type. However, you can take a reference to a function if all
-its type parameters are instantiated. E.g.,
+일반 함수에 대한 포인터를 가져올 수는 없으며, 일반 함수 유형을 표현할 방법도 없습니다. 
+그러나 모든 유형 매개변수가 인스턴스화된 경우 함수에 대한 참조를 취할 수 있습니다. 
+
+예시:
 
 ```rust
 fn foo<T>(x: &T) {}
@@ -215,23 +240,19 @@ fn main() {
 }
 ```
 
-There is no way to define a generic closure. If you need a closure to work over
-many types you can use trait objects, macros (for generating closures), or pass
-a closure which returns closures (each returned closure can operate on a
-different type).
+위 예시에서 `foo`는 제네릭 함수입니다. `foo`의 유형 매개변수를 구체화한 경우 해당 함수에
+대한 참조를 가져올 수 있습니다. `x`는 `foo::<i32>`의 참조를 가지게 되고, `x(&42)`를 
+호출하여 함수를 실행합니다.
 
+일반적인 클로저에 대한 제네릭을 정의할 수는 없습니다. 여러 유형에서 작동해야 하는 클로저가
+필요한 경우, 트레이트 객체, 매크로(클로저 생성을 위한 매크로), 또는 다른 유형에 작용하는
+클로저를 반환하는 클로저를 전달하는 방법을 사용할 수 있습니다.
 
-### Lifetime-generic functions and higher-ranked types
+### 수명에 대해 일반화된 함수와 고계 타잎(유형)
 
-It *is* possible to have function types and closures which are generic over
-lifetimes. 
-
-Imagine we have a closure which takes a borrowed reference. The closure can work
-the same way no matter what lifetime the reference has (and indeed in the
-compiled code, the lifetime will have been erased). But, what does the type look
-like?
-
-For example,
+예를 들어, 빌린 참조를 가져오는 클로저를 생각해보겠습니다. 이 클로저는 참조의 수명이
+무엇이든 상관없이 동일한 방식으로 작동할 수 있습니다(실제로 컴파일된 코드에서 수명은 
+지워집니다). 그러나 이 경우 유형(타잎)은 어떻게 되는 걸까요?
 
 ```rust
 fn foo<F>(x: &Bar, f: F) -> &Baz
@@ -241,8 +262,15 @@ fn foo<F>(x: &Bar, f: F) -> &Baz
 }
 ```
 
-what are the lifetimes of the references here? In this simple example, we can
-use a single lifetime (no need for a generic closure):
+위 예시에서 `foo` 함수는 `x`라는 `Bar`의 빌린 참조와 `f`라는 클로저를 인자로 받고, `f`를 
+`x`에 적용한 결과인 `&Baz`를 반환합니다. 제네릭한 함수 `foo`는 `F`라는 타입 매개변수로
+클로저의 유형(타잎)을 받아들입니다. `F`는 `Fn(&Bar) -> &Baz` 트레이트 바운드(제약)를
+가지므로 `F`로 전달되는 클로저는 `&Bar`를 인자로 받아 `&Baz`를 반환해야 합니다.
+
+이렇게 제네릭한 함수와 수명에 대해 일반화된 함수 유형과 클로저를 사용하여 작업할 수 있습니다.
+
+여기서 참조의 수명은 어떻게 되나요? 이 간단한 예제에서는 다음과 같이 할 수 있습니다.
+단일 수명을 사용할 수 있습니다(일반 클로저가 필요 없음):
 
 ```rust
 fn foo<'b, F>(x: &'b Bar, f: F) -> &'b Baz
@@ -252,8 +280,8 @@ fn foo<'b, F>(x: &'b Bar, f: F) -> &'b Baz
 }
 ```
 
-But what if we want `f` to work on inputs with different lifetimes? Then we need
-a generic function type:
+하지만 `f`가 다른 수명을 가진 입력에 대해 작동하도록 하려면 어떻게 해야 할까요? 
+그렇다면 다음이 필요합니다. 일반 함수 타입이 필요합니다:
 
 ```rust
 fn foo<'b, 'c, F>(x: &'b Bar, y: &'c Bar, f: F) -> (&'b Baz, &'c Baz)
@@ -263,11 +291,11 @@ fn foo<'b, 'c, F>(x: &'b Bar, y: &'c Bar, f: F) -> (&'b Baz, &'c Baz)
 }
 ```
 
-The novelty here is the `for<'a>` syntax, this is used to denote a function type
-which is generic over a lifetime. It is read "for all 'a, ...". In theoretical
-terms, the function type is universally quantified.
+여기서 참신한 점은 `for<'a>` 구문인데, 이는 함수 유형을 나타내는 데 사용됩니다.
+함수를 나타내는 데 사용됩니다. "모든 'a, ...'에 대해..."라고 읽습니다. 술어논리에서 
+모든 ... 에 대하여와 같은 형식입니다. 
 
-Note that we cannot hoist up `'a` to `foo` in the above example. Counter-example:
+위의 예제에서 'a를 foo로 옮길 수 없습니다. 반례:
 
 ```rust
 fn foo<'a, 'b, 'c, F>(x: &'b Bar, y: &'c Bar, f: F) -> (&'b Baz, &'c Baz)
@@ -277,22 +305,21 @@ fn foo<'a, 'b, 'c, F>(x: &'b Bar, y: &'c Bar, f: F) -> (&'b Baz, &'c Baz)
 }
 ```
 
-will not compile because when the compiler infers lifetimes for a call to `foo`,
-it must pick a single lifetime for `'a`, which it can't do if `'b` and `'c` are
-different.
+`foo`를 호출할 때 컴파일러가 수명을 추론할 때, `'b`와 `'c`가 서로 다른 경우에는
+`'a`에 대해 단일 수명을 선택해야 합니다. 이 경우에는 수명을 선택할 수 없기 때문에
+컴파일되지 않습니다.
 
-A function type which is generic in this way is called a higher-ranked type.
-Lifetime variables at the outer level have rank one. Because `'a` in the above
-example cannot be moved to the outer level, it's rank is higher than one.
+이와 같이 일반화된 함수 타입은 고차 유형(higher-ranked type)이라고 합니다.
+바깥쪽 레벨의 수명 변수는 랭크 1을 가지고 있습니다. 위의 예제에서 'a는 바깥쪽
+레벨로 이동할 수 없으므로 랭크가 1보다 높은 값입니다.
 
-Calling functions with higher-ranked function type arguments is easy - the
-compiler will infer the lifetime parameters. E.g., `foo(&Bar { ... }, &Bar
-{...}, |b| &b.field)`.
+고차 함수 유형을 가진 함수를 호출하는 것은 쉽습니다. 컴파일러가 수명 매개변수를 추론할
+것입니다. 예를 들어, `foo(&Bar { ... }, &Bar { ... }, |b| &b.field)`와 같이 작성할 수
+있습니다.
 
-In fact, most of the time you don't even need to worry about such things. The
-compiler will allow you to elide the quantified lifetimes in the same way that
-you are allowed to elide many lifetimes on function arguments. For example, the
-example above can just be written as
+실제로 대부분의 경우에는 이러한 사항에 대해 걱정할 필요가 없습니다. 컴파일러는 함수 
+인수에서 여러 수명을 생략할 수 있는 것처럼, 일반적으로 수명 매개변수의 생략을 허용합니다.
+예를 들어, 위의 예제는 다음과 같이 작성할 수 있습니다.
 
 ```rust
 fn foo<'b, 'c, F>(x: &'b Bar, y: &'c Bar, f: F) -> (&'b Baz, &'c Baz)
@@ -302,15 +329,17 @@ fn foo<'b, 'c, F>(x: &'b Bar, y: &'c Bar, f: F) -> (&'b Baz, &'c Baz)
 }
 ```
 
-(and you only need `'b` and `'c` because it is a contrived example).
+(이 예제에서는 특별한 경우로 인해 `'b`와 `'c`만 필요합니다).
 
-Where Rust sees a function type with a borrowed references, it will apply the
-usual elision rules, and quantify the elided variables at the scope of the
-function type (i.e., with higher rank).
 
-You might be wondering why bother with all this complexity for what looks like a
-fairly niche use case. The real motivation is functions which take a function
-to operate on some data provided by the outer function. For example,
+Rust은 대여된 참조를 포함한 함수 유형을 볼 때, 일반적인 생략 규칙을 적용하고, 생략된 
+변수를 함수 유형의 범위에서 양자화합니다(즉, 높은 랭크로 취급합니다).
+
+이런 복잡성이 꽤 특수한 사용 사례처럼 보이는데 왜 이런 복잡성을 감수해야 하는지 궁금할 수 
+있습니다. 실제 동기는 외부 함수에서 제공한 데이터를 기반으로 작동하는 함수를 받는 
+함수입니다. 
+
+예시:
 
 ```rust
 fn foo<F>(f: F)
@@ -321,26 +350,24 @@ fn foo<F>(f: F)
 }
 ```
 
-In these cases, we *need* higher-ranked types. If we added a lifetime parameter
-to `foo` instead, we could never infer a correct lifetime. To see why, let's
-look at how it might work, consider `fn foo<'a, F: Fn(&'a i32)> ...`. Rust
-requires that any lifetime parameter must outlive the item it is declared on (if
-this were not the case, an argument with that lifetime could be used inside that
-function, where it is not guaranteed to be live). In the body of `foo` we use
-`f(&data)`, the lifetime Rust will infer for that reference will last (at most)
-from where `data` is declared to where it goes out of scope. Since `'a` must
-outlive `foo`, but that inferred lifetime does not, we cannot call `f` in this
-way.
+이러한 경우에는 고차 유형(타잎)이 필요합니다. 대신 `foo`에 수명 매개변수를 추가하면 올바른 
+수명을 추론할 수 없습니다. 왜 그런지 알아보기 위해, `fn foo<'a, F: Fn(&'a i32)> ...`와 
+같이 작성하는 방법을 살펴보겠습니다. Rust는 수명 매개변수가 선언된 항목을 초과해야 한다고
+요구합니다(이것이 그렇지 않으면 해당 수명이 보장되지 않는 위치에서 해당 함수 내에서 해당
+수명을 사용할 수 있기 때문입니다). `foo`의 본문에서는 `f(&data)`를 사용하는데, Rust는 해당
+참조에 대해 추론하는 수명은 `data`가 선언된 위치부터 범위를 벗어나는 위치까지만 
+지속됩니다(최대로). `'a`는 `foo`보다 오래 지속되어야 하지만 추론된 수명은 그렇지 않으므로
+이러한 방식으로 f를 호출할 수 없습니다.
 
-However, with higher-ranked lifetimes `f` can accept any lifetime and so the
-anonymous one from `&data` is fine and the function type checks.
+하지만 높은 랭크 수명으로 인해 `f`는 모든 수명을 수용할 수 있으므로 `&data`에서의 익명의
+수명이 적합하고 함수 유형(타잎)이 체크됩니다.
 
+### enum 생성자
 
-### Enum constructors
+이것은 다소 주제 이탈이지만 때로는 유용한 기교입니다. 열거형의 모든 변형은 해당 변형의 
+필드에서 열거형 유형으로의 함수를 정의합니다.
 
-This is something of a digression, but it is sometimes a useful trick. All
-variants of an enum define a function from the fields of the variant to the enum
-type. For example,
+예시:
 
 ```rust
 enum Foo {
@@ -349,31 +376,28 @@ enum Foo {
 }
 ```
 
-defines two functions, `Foo::Bar: Fn() -> Foo` and `Foo::Baz: Fn(i32) -> Foo`.
-We don't normally use the variants in this way, we treat them as data types
-rather than functions. But sometimes it is useful, for example if we have a list
-of `i32`s we can create a list of `Foo`s with
+는 두 개의 함수, `Foo::Bar: Fn() -> Foo`와 `Foo::Baz: Fn(i32) -> Foo`를 정의합니다. 우리는
+일반적으로 변형(Variant)을 이렇게 사용하지 않으며, 데이터 유형(타잎)으로 취급합니다. 
+하지만 때로는 유용할 수 있습니다. 예를 들어, `i32`의 목록이 있다면 다음과 같이 `Foo`의
+목록을 생성할 수 있습니다.
 
 ```rust
 list_of_i32.iter().map(Foo::Baz).collect()
 ```
 
-
 ## Closure flavours
 
-A closure has two forms of input: the arguments which are passed to it explicitly
-and the variables it *captures* from its environment. Usually, everything about
-both kinds of input is inferred, but you can have more control if you want it.
+클로저는 입력으로서 두 가지 형태를 갖습니다: 명시적으로 전달되는 인수와 환경에서 캡처된
+변수들입니다. 일반적으로 인수와 관련된 모든 것은 추론에 의해 결정되지만, 필요한 경우에는 
+더 많은 제어를 할 수 있습니다.
 
-For the arguments, you can declare types instead of letting Rust infer them. You
-can also declare a return type. Rather than writing `|x| { ... }` you can write
-`|x: i32| -> String { ... }`. Whether an argument is owned or borrowed is 
-determined by the types (either declared or inferred).
+인수에 대해서는 Rust가 추론하는 대신 타입을 선언할 수 있습니다. 반환 타입도 선언할 수
+있습니다. `|x| { ... }` 대신 `|x: i32| -> String { ... }`와 같이 작성할 수 있습니다. 
+인수가 소유되는지 대여되는지는 타입(선언된 것이든 추론된 것이든)에 따라 결정됩니다.
 
-For the captured variables, the type is mostly known from the environment, but
-Rust does a little extra magic. Should a variable be captured by reference or
-value? Rust infers this from the body of the closure. If possible, Rust captures
-by reference. E.g.,
+캡처된 변수에 대해서는 대부분의 타입이 환경으로부터 알려져 있지만, Rust는 약간의 추가적인
+동작을 수행합니다. 변수는 참조로 캡처해야 하는지 값으로 캡처해야 하는지는 클로저의
+본문으로부터 추론됩니다. 가능한 경우, Rust는 참조로 캡처합니다. 예를 들어,
 
 ```rust
 fn foo(x: Bar) {
@@ -381,41 +405,34 @@ fn foo(x: Bar) {
 }
 ```
 
-All being well, in the body of `f`, `x` has the type `&Bar` with a lifetime
-bounded by the scope of `foo`. However, if `x` is mutated, then Rust will infer
-that the capture is by mutable reference, i.e., `x` has type `&mut Bar`. If `x`
-is moved in `f` (e.g., is stored into a variable or field with value type), then
-Rust infers that the variable must be captured by value, i.e., it has the type
-`Bar`.
+모든 것이 정상이라면, `f`의 본문에서 `x`의 타입은 `&Bar`이며, 수명은 `foo`의 범위에 의해
+제한됩니다. 그러나 만약 `x`가 변경되면, Rust는 해당 캡처가 가변 참조로 이루어진다고
+추론합니다. 즉, x의 타입은 `&mut Bar`입니다. 만약 `f` 내에서 `x`가 이동된다면(예: 변수나
+필드에 값으로 저장된다면), Rust는 변수가 값으로 캡처되어야 한다고 추론하므로, `x`의 타입은 
+`Bar`입니다.
 
-This can be overridden by the programmer (sometimes necessary if the closure
-will be stored in a field or returned from a function). By using the `move`
-keyword in front of a closure. Then, all of the captured variables are captured
-by value. E.g., in `let f = move || { ... x ... };`, `x` would always have type
-`Bar`.
+프로그래머가 직접 이를 무시하고 조정할 수도 있습니다(클로저가 필드에 저장되거나 함수로부터
+반환되는 경우에 필요할 수 있습니다). 클로저 앞에 `move` 키워드를 사용하여 모든 캡처된 
+변수를 값으로 캡처할 수 있습니다. 예를 들어 `let f = move || { ... x ... };`에서 `x`는 
+항상 `Bar` 타입을 갖습니다.
 
-We talked earlier about the different function kinds: `Fn`, `FnMut`, and `FnOnce`.
-We can now explain why we need them. For closures, the mutable-ness and once-ness
-refer to the captured variables. If a capture mutates any of the variables it
-captures then it will have a `FnMut` type (note that this is completely inferred
-by the compiler, no annotation is necessary). If a variable is moved into a
-closure, i.e., it is captured by value (either because of an explicit `move` or
-due to inference), then the closure will have a `FnOnce` type. It would be unsafe
-to call such a closure multiple times because the captured variable would be
-moved more than once.
+이전에 다양한 함수 종류인 `Fn`, `FnMut`, `FnOnce`에 대해 이야기했습니다. 이제 왜 이들이
+필요한지 설명할 수 있습니다. 클로저에서 가변성과 단일 소유성은 캡처된 변수에 대한 
+것입니다. 만약 클로저가 캡처된 변수 중 하나를 변경한다면, 해당 클로저는 `FnMut` 타입을 
+갖게 됩니다(주석 없이도 완전히 컴파일러에 의해 추론됩니다). 변수가 클로저로 이동되어
+소유되면, 즉, 명시적인 `move`나 추론에 의해 값으로 캡처된다면, 클로저는 `FnOnce` 타입을
+갖습니다. 이러한 클로저를 여러 번 호출하는 것은 안전하지 않습니다. 왜냐하면 캡처된 변수가
+여러 번 이동되기 때문입니다.
 
-Rust will do its best to infer the most flexible type for the closure if it can.
+Rust는 가능한 경우 클로저에 가장 유연한 타입을 추론하기 위해 최선을 다할 것입니다.
+## 구현 (impl)
 
+클로저는 익명 구조체로 구현됩니다. 이 구조체는 클로저에 의해 캡처된 각 변수를 위한 필드를
+가지고 있습니다. 이는 하나의 수명 매개변수로 수명이 캡처된 변수에 대한 한계를 설정한 수명
+매개변수로 수명 매개변수화되어 있습니다. 익명 구조체는 클로저를 실행하기 위해 호출되는 
+call 메서드를 구현합니다.
 
-## Implementation
-
-A closure is implemented as an anonymous struct. That struct has a field for
-each variable captured by the closure. It is lifetime-parametric with a single
-lifetime parameter which is a bound on the lifetime of captured variables. The
-anonymous struct implements a `call` method which is called to execute the
-closure.
-
-For example, consider
+예를 들어 다음 코드를 살펴보겠습니다.
 
 ```rust
 fn main() {
@@ -425,14 +442,14 @@ fn main() {
 }
 ```
 
-the compiler treats this as
+컴파일러는 이를 다음과 같이 처리합니다.
 
 ```rust
 struct Closure14<'env> {
     x: &'env Foo,
 }
 
-// Not actually implemented like this, see below.
+// 실제로는 이와 같이 구현되지 않습니다. 아래 내용 참조.
 impl<'env> Closure14<'env> {
     fn call(&self, y: i32) -> i32 {
         self.x.get_number() + y
@@ -441,32 +458,34 @@ impl<'env> Closure14<'env> {
 
 fn main() {
     let x = Foo { ... };
-    let f = Closure14 { x: x }
+    let f = Closure14 { x: &x };
     let z = f.call(42);
 }
 ```
 
-As we mentioned above, there are three different function traits - `Fn`,
-`FnMut`, and `FnOnce`. In reality the `call` method is required by these traits
-rather than being in an inherent impl. `Fn` has a method `call` which takes
-`self` by reference, `FnMut` has `call_mut` taking `self` by mutable reference,
-and `FnOnce` has `call_once` which takes `self` by values.
+하지만 실제로는 컴파일러가 이렇게 구현하지는 않습니다. 클로저 구조체는 특정 크기로 컴파일
+타임에 알려진 것이 아니기 때문에, 런타임에 동적으로 할당되고 관리됩니다. 또한 컴파일러는
+클로저의 구체적인 구조를 최적화하여 불필요한 메모리 할당과 복사를 방지합니다. 이는 
+클로저를 익명 구조체로 표현하는 내부 동작을 나타낸 예시입니다.
 
-When we've seen function types above, they look like `Fn(i32) -> i32` which
-doesn't look much like a trait type. There is a little bit of magic here. Rust allows
-this round bracket sugar only for function types. To desugar to a regular type
-(an 'angle bracket type'), the argument types are treated as a tuple type and
-passed as a type parameter and the return type as an associated type called
-`Output`. So, `Fn(i32) -> i32` is desugared to `Fn<(i32,), Output=i32>` and the
-`Fn` trait definition looks like
+위에서 언급한 것처럼, `Fn`, `FnMut`, `FnOnce` 세 가지 다른 함수 트레이트가 있습니다.
+실제로는 `call` 메서드가 이러한 트레이트에 의해 요구되는 것이므로 본질적인 구현에 포함되지
+않습니다. `Fn`은 `self`를 참조로 가져오는 `call` 메서드를 갖고 있으며, `FnMut`은 가변 
+참조로 가져오는 `call_mut`을 사용하며, `FnOnce`은 값을 가져오는 `call_once`를 사용합니다.
+
+위에서 본 함수 타입은 `Fn(i32) -> i32`와 같이 보이는데, 이는 트레이트 타입과는 많이
+다릅니다. 이 부분에는 약간의 마법이 있습니다. Rust는 이러한 라운드 브래킷 표기법을 함수
+타입에 대해서만 허용합니다. 일반적인 타입(꺾쇠 괄호 타입)으로 변환하기 위해, 인자 타입은 
+튜플 타입으로 취급되어 타입 매개변수로 전달되고 반환 타입은 `Output`이라는 연관 타입으로 
+전달됩니다. 따라서, `Fn(i32) -> i32`는 `Fn<(i32,), Output=i32>`로 변환되며, `Fn` 트레이트 
+정의는 다음과 같이 보입니다.
 
 ```rust
-pub trait Fn<Args> : FnMut<Args> {
+pub trait Fn<Args>: FnMut<Args> {
     fn call(&self, args: Args) -> Self::Output;
 }
 ```
-
-The implementation for `Closure14` above would therefore look more like
+따라서, 위의 Closure14에 대한 구현은 다음과 같이 더욱 정확하게 보일 것입니다.
 
 ```rust
 impl<'env> FnOnce<(i32,)> for Closure14<'env> {
@@ -490,26 +509,27 @@ impl<'env> Fn<(i32,)> for Closure14<'env> {
 You can find the function traits in
 [core::ops](https://dxr.mozilla.org/rust/source/src/libcore/ops.rs)
 
-We talked above about how using generics gives static dispatch and using trait
-objects gives virtual dispatch. We can now see in a bit more detail why.
+앞서 설명한 대로, 제네릭을 사용하면 정적 디스패치(static dispatch)가 이루어지고, 트레이트
+객체를 사용하면 가상 디스패치(virtual dispatch)가 이루어집니다. 이제 더 자세히 이유를
+살펴보겠습니다.
 
-When we call `call`, it is a statically dispatched method call, there is no
-virtual dispatch. If we pass it to a monomorphised function, we still know the
-type statically, and we still get a static dispatch.
+`call`을 호출할 때, 이는 정적 디스패치된 메서드 호출이며 가상 디스패치는 수행되지 
+않습니다. 만약 `call`을 모노모피즈(단일 타잎의 생성된 코드)된 함수에 전달한다면, 여전히
+정적으로 타입을 알 수 있으며 정적 디스패치를 받습니다.
 
-We can make the closure into a trait object, e.g., `&f` or `Box::new(f)` with
-types `&Fn(i32)->i32` or `Box<Fn(i32)->i32>`. These are pointer types, and
-because they are pointer-to-trait types, the pointers are fat pointers. That
-means they consist of the pointer to the data itself and a pointer to a vtable.
-The vtable is used to lookup the address of `call` (or `call_mut` or whatever).
+우리는 클로저를 트레이트 객체로 변환할 수 있습니다. 예를 들어, `&f`나 `Box::new(f)`와 같은
+형태로 사용할 수 있으며, 이들은 `&Fn(i32) -> i32` 또는 `Box<Fn(i32) -> i32>`와 같은 포인터
+타입입니다. 이들은 트레이트를 가리키는 포인터 타입이기 때문에, 포인터는 
+팻 포인터(fat pointer)로 알려져 있습니다. 팻 포인터는 데이터 자체를 가리키는 포인터와 
+가상테이블을 가리키는 포인터로 구성됩니다. 가상테이블은 `call` (또는 `call_mut` 등)의 
+주소를 조회하는 데 사용됩니다.
 
-You'll sometimes hear these two representations of closures called boxed and
-unboxed closures. An unboxed closure is the by-value version with static
-dispatch. A boxed version is the trait object version with dynamic dispatch. In
-the olden days, Rust only had boxed closures (and the system was quite a bit
-different).
+이러한 클로저 표현의 두 가지 형태를 박싱된(boxed) 클로저와 언박싱된(unboxed) 클로저로
+불리우는 경우가 종종 있습니다. 언박싱된 클로저는 정적 디스패치를 사용하는 값을 가지는
+버전이며, 박싱된 클로저는 동적 디스패치를 사용하는 트레이트 객체 버전입니다. 과거에는 
+Rust가 박싱된 클로저만을 지원하며 시스템은 상당히 다르게 구성되어 있었습니다.
 
-## References
+## 참고자료
 
 * [RFC 114 - Closures](https://github.com/rust-lang/rfcs/blob/master/text/0114-closures.md)
 * [Finding Closure in Rust blog post](http://huonw.github.io/blog/2015/05/finding-closure-in-rust/)

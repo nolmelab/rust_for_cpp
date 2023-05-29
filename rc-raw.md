@@ -1,58 +1,39 @@
-# Reference counted and raw pointers
+# Rc와 원시 포인터 
 
-TODO add discussion of custom pointers and Deref trait (maybe later, not here)
+지금까지 우리는 고유 포인터(`Box<T>1)와 참조에 대해 다루었습니다. 고유 포인터는 C++의
+새로운 `std::unique_ptr`과 매우 유사하며, 참조는 C++에서 포인터 또는 참조를 사용하는 경우 대부분 사용하는 '기본' 포인터입니다. Rust에는 라이브러리 내에 또는 언어 자체에 내장된 
+몇 가지 더 드물게 사용되는 포인터 유형이 있습니다. 이들은 주로 C++에서 익숙한 여러 종류의
+스마트 포인터와 유사합니다.
 
-So far we've covered unique and borrowed pointers. Unique pointers are very
-similar to the new std::unique_ptr in C++ and borrowed references are the
-'default' pointer you usually reach for if you would use a pointer or reference
-in C++. Rust has a few more, rarer pointers either in the libraries or built in
-to the language. These are mostly similar to various kinds of smart pointers you
-might be used to in C++.
+Rust가 많은 포인터 유형을 가지고 있는 것처럼 느껴질 수 있지만, 라이브러리에서 사용 가능한 
+다양한 종류의 스마트 포인터를 생각해보면 C++과 꽤 유사합니다. 그러나 Rust에서는 언어를 
+처음 배울 때 이러한 포인터 유형을 더 자주 만나게 됩니다. Rust 포인터는 컴파일러의 지원을
+받기 때문에 사용할 때 실수를 할 가능성이 훨씬 적습니다.
 
-This post took a while to write and I still don't like it. There are a lot of
-loose ends here, both in my write up and in Rust itself. I hope some will get
-better with later posts and some will get better as the language develops. If
-you are learning Rust, you might even want to skip this stuff for now, hopefully
-you won't need it. Its really here just for completeness after the posts on
-other pointer types.
-
-It might feel like Rust has a lot of pointer types, but it is pretty similar to
-C++ once you think about the various kinds of smart pointers available in
-libraries. In Rust, however, you are more likely to meet them when you first
-start learning the language. Because Rust pointers have compiler support, you
-are also much less likely to make errors when using them.
-
-I'm not going to cover these in as much detail as unique and borrowed references
-because, frankly, they are not as important. I might come back to them in more
-detail later on.
+러스트는 작은 역할 단위로 나눠서 해당 역할만 책임지도록 하는 방향으로 여러 언어 구성 요소도
+설계되고 구현되었습니다. 따라서, 참조 (빌린 참조), `Box<T>`, `Rc<T>`, 원시 포인터, `Arc<T>`
+와 같이 용도별 포인터가 있고, 처음 언어를 접할 때는 당황할 수도 있지만 익숙해지면 매우 
+유용하다는 점을 알게 됩니다. [^1]
 
 ## Rc<T>
 
-Reference counted pointers come as part of the rust standard library. They are
-in the `std::rc` module (we'll cover modules soon-ish. The modules are the
-reason for the `use` incantations in the examples). A reference counted pointer
-to an object of type `T` has type `Rc<T>`. You create reference counted pointers
-using a static method (which for now you can think of like C++'s, but we'll see
-later they are a bit different) - `Rc::new(...)` which takes a value to create
-the pointer to. This constructor method follows Rust's usual move/copy semantics
-(like we discussed for unique pointers) - in either case, after calling Rc::new,
-you will only be able to access the value via the pointer.
+`Rc`는 참조 카운트를 갖는 포인터(Reference Counted 포인터)라는 뜻입니다.
 
-As with the other pointer types, the `.` operator does all the dereferencing you
-need it to. You can use `*` to manually dereference.
+참조 카운트를 갖는 포인터(Reference counted pointers)는 Rust 표준 라이브러리의 일부로
+제공됩니다. `std::rc` 모듈에 포함되어 있습니다(모듈은 러스트의 파일 단위 구조화 기능입니다. 
+예제에서의 `use` 문은 모듈을 사용하기 위한 것입니다). 타입 T의 객체에 대한 참조 카운트 
+포인터는 `Rc<T>` 타입을 갖습니다.
 
-To pass a ref-counted pointer you need to use the `clone` method. This kinda
-sucks, and hopefully we'll fix that, but that is not for sure (sadly). You can
-take a (borrowed) reference to the pointed at value, so hopefully you don't need
-to clone too often. Rust's type system ensures that the ref-counted variable
-will not be deleted before any references expire. Taking a reference has the
-added advantage that it doesn't need to increment or decrement the ref count,
-and so will give better performance (although, that difference is probably
-marginal since Rc objects are limited to a single thread and so the ref count
-operations don't have to be atomic). As in C++, you can also take a reference to
-the Rc pointer.
+`Rc::new(...)`라는 정적 메서드를 사용하여 참조 카운트 포인터를 생성합니다. C++의
+`std::shared_ptr`과 비슷하지만 atomic 연산을 사용하지 않아 쓰레드 안전하지 않다는 차이만
+있습니다. `Rc::new`를 호출한 후에는 포인터를 통해서만 값을 액세스할 수 있게 됩니다.
 
-An Rc example:
+다른 포인터 타입과 마찬가지로 . 연산자는 필요한 모든 역참조를 수행합니다. 수동으로 역참조하기 위해 * 연산자를 사용할 수도 있습니다.
+
+참조 카운트 포인터를 전달하려면 clone 메서드를 사용해야합니다. 이는 다소 불편한 점이며, 
+향후 개선될 수 있지만 확실하지는 않습니다. 다행히도, 가리키는 값을 (빌린) 참조로 사용할 수 있으므로 자주 복제할 필요가 없을 것입니다. Rust의 타입 시스템은 참조가 만료되기 전에 참조 카운트 변수가 삭제되지 않도록 보장합니다. 참조를 취하는 것은 참조 카운트를 증가 또는 감소시킬 필요가 없으므로 성능이 향상됩니다. (하지만 이 차이는 아마도 미미할 것입니다. 왜냐하면 Rc 객체는 단일 스레드에 제한되므로 참조 카운트 연산은 원자적이지 않아도 됩니다). C++과 마찬가지로 Rc 포인터에 대한 참조도 가져올 수 있습니다.
+
+Rc 예시:
 
 ```rust
 use std::rc::Rc;
@@ -62,59 +43,64 @@ fn baz(x: &i32) { }
 
 fn foo() {
     let x = Rc::new(45);
-    bar(x.clone());   // Increments the ref-count
-    baz(&*x);         // Does not increment
+    bar(x.clone());   // 참조 카운트를 증가시킵니다.
+    baz(&*x);         // 참조 카운트를 증가시키지 않습니다.
     println!("{}", 100 - *x);
-}  // Once this scope closes, all Rc pointers are gone, so ref-count == 0
-   // and the memory will be deleted.
+}  // 이 스코프가 닫히면 모든 Rc 포인터가 사라지므로 참조 카운트는 0이 되고 
+   // 메모리가 삭제됩니다.
 ```
 
-Ref counted pointers are always immutable. If you want a mutable ref-counted
-object you need to use a RefCell (or Cell) wrapped in an `Rc`.
+참조 카운트 포인터는 항상 불변(immutable)입니다. 만약 가변(`mut`) 참조 카운트 객체를
+사용하려면, `Rc`로 감싼 `RefCell` (또는 `Cell`)을 사용해야 합니다.
 
-## Cell and RefCell
+## `Cell`과 `RefCell`
 
-Cell and RefCell are structs which allow you to 'cheat' the mutability rules.
-This is kind of hard to explain without first covering Rust data structures and
-how they work with mutability, so I'm going to come back to these slightly
-tricky objects later. For now, you should know that if you want a mutable, ref
-counted object you need a Cell or RefCell wrapped in an Rc. As a first
-approximation, you probably want Cell for primitive data and RefCell for objects
-with move semantics. So, for a mutable, ref-counted int you would use
-`Rc<Cell<int>>`.
+`Cell`과 `RefCell`은 구조체로, 가변성 규칙을 '속일' 수 있게 해줍니다. 이를 설명하기 
+위해서는 Rust의 데이터 구조와 가변성을 어떻게 다루는지에 대해 알아야 하기 때문에, 이런 약간 
+까다로운 객체들은 나중에 다루도록 하겠습니다. 
 
-## \*T - raw pointers
+일단, 가변 참조 카운트 객체를 원한다면 `Cell` 또는 `RefCell`을 `Rc`로 감싸야 함을 알아야
+합니다. 첫 번째 근사값으로는, 원시 데이터에는 `Cell`을 사용하고, 이동 가능한 객체에는 
+`RefCell`을 사용하는 것이 좋습니다. 따라서 가변한 참조 계수화된 정수를 원한다면 
+`Rc<Cell<i32>>`를 사용하게 됩니다.
 
-Finally, Rust has two kinds of raw pointers (aka unsafe pointers): `*const T`
-for an immutable raw pointer, and `*mut T` for a mutable raw pointer. They are
-created using `&` or `&mut` (you might need to specify a type to get a `*T`
-rather than a `&T` since the `&` operator can create either a borrowed reference
-or a raw pointer). Raw pointers are like C pointers, just a pointer to memory
-with no restrictions on how they are used (you can't do pointer arithmetic
-without casting, but you can do it that way if you must). Raw pointers are the
-only pointer type in Rust which can be null. There is no automatic dereferencing
-of raw pointers (so to call a method you have to write `(*x).foo()`) and no
-automatic referencing. The most important restriction is that they can't be
-dereferenced (and thus can't be used) outside of an unsafe block. In regular
-Rust code you can only pass them around.
+`Cell`과 `RefCell` 모두 내부 가변성을 제공하여 불변 변수나 참조에서도 내부 데이터를 
+변경할 수 있도록 합니다. 둘의 차이는 `RefCell`의 경우 일반 변수의 빌림 규칙을 실행 시간에
+검증하여 위반할 경우 패닉을 한다는 점입니다.  
 
-So, what is unsafe code? Rust has strong safety guarantees, and (rarely) they
-prevent you doing something you need to do. Since Rust aims to be a systems
-language, it has to be able to do anything that is possible and sometimes that
-means doing things the compiler can't verify is safe. To accomplish that, Rust
-has the concept of unsafe blocks, marked by the `unsafe` keyword. In unsafe code
-you can do unsafe things - dereference a raw pointer, index into an array
-without bounds checking, call code written in another language via the FFI, or
-cast variables. Obviously, you have to be much more careful writing unsafe code
-than writing regular Rust code. In fact, you should only very rarely write
-unsafe code. Mostly it is used in very small chunks in libraries, rather than in
-client code. In unsafe code you must do all the things you normally do in C++ to
-ensure safety. Furthermore, you must manually ensure that you maintain the
-invariants which the compiler would usually enforce. Unsafe blocks allow you to
-manually enforce Rust's invariants, it does not allow you to break those
-invariants. If you do, you can introduce bugs both in safe and unsafe code.
+## `*T` - 원시 포인터들
 
-An example of using an raw pointer:
+마지막으로, Rust에는 두 가지 종류의 원시 포인터 (또는 안전하지 않은 포인터)가 있습니다. `*const T`는 불변 원시 포인터를 나타내며, `*mut T`는 가변 원시 포인터를 나타냅니다. 이들은 
+`&` 또는 `&mut`을 사용하여 생성할 수 있습니다. 
+
+`&` 연산자는 대여된 참조나 원시 포인터 중 어떤 것을 생성할지 명시적으로 타입을 지정해야 할
+수 있습니다. 원시 포인터는 C 포인터와 비슷하며, 제약이 없이 메모리를 가리키는 포인터입니다
+(포인터 산술을 사용하려면 캐스팅이 필요하지만 필요한 경우 이 방법을 사용할 수 있습니다).
+
+원시 포인터는 Rust에서 유일하게 널(null)일 수 있는 포인터 유형입니다. 원시 포인터에는
+자동으로 간접 참조가 이루어지지 않으므로 (따라서 메서드를 호출하기 위해서는 (*x).foo()와
+같이 작성해야 합니다), 자동으로 참조되지도 않습니다. 가장 중요한 제한은 비 안전 블록
+외부에서 원시 포인터를 간접 참조(사용)할 수 없다는 것입니다. 일반적인 Rust 코드에서는 원시
+포인터를 전달하는 것만 허용됩니다.
+
+그렇다면, 무엇이 "unsafe" 코드인 걸까요? Rust는 강력한 안전성 보장을 가지고 있지만, 
+(드물게) 필요한 작업을 수행할 수 없도록 제한할 때가 있습니다. Rust는 시스템 프로그래밍 
+언어로서 모든 가능한 작업을 수행할 수 있어야 하기 때문에, 컴파일러가 안전성을 검증할 수 
+없는 작업을 수행해야 할 때가 있습니다. 이를 위해 Rust에는 unsafe 키워드로 표시된 "unsafe" 블록 개념이 있습니다. 
+
+"unsafe" 코드에서는 안전하지 않은 작업을 수행할 수 있습니다. 원시 포인터를 간접 참조하거나,
+배열의 경계를 확인하지 않고 인덱스에 접근하거나, 외부 언어로 작성된 코드를 FFI를 통해
+호출하거나, 변수를 캐스트하는 등의 작업이 가능합니다. 
+
+당연히 "unsafe" 코드를 작성할 때에는 일반적인 Rust 코드를 작성할 때보다 훨씬 주의가 
+필요합니다. 실제로, "unsafe" 코드를 작성하는 경우는 매우 드물며, 주로 라이브러리의 작은 
+부분에 사용됩니다. "unsafe" 코드를 작성할 때는 Rust의 안전성을 보장하기 위해 일반적으로 
+C++에서 수행하는 작업을 수동으로 수행해야 합니다. 또한, 일반적으로 컴파일러가 강제하는
+불변성을 수동으로 유지해야 합니다. "unsafe" 블록은 Rust의 불변성을 수동으로 유지할 수 있게
+해주지만, 이러한 불변성을 깨는 것은 허용하지 않습니다. 그렇게 하면 안전한 코드와 "unsafe"
+코드 모두에서 버그를 도입할 수 있습니다.
+
+원시 포인터를 사용하는 예시: 
 
 ```rust
 fn foo() {
@@ -135,6 +121,9 @@ fn add_5(p: *mut i32) -> i32 {
 }
 ```
 
-And that concludes our tour of Rust's pointers. Next time we'll take a break
-from pointers and look at Rust's data structures. We'll come back to borrowed
-references again in a later post though.
+이로써 Rust의 포인터에 대한 여행을 마칩니다. 다음에는 포인터에서 잠시 쉬어가고, Rust의 데이터 구조에 대해 알아보겠습니다. 하지만 나중에 다시 참조에 대해서도 다룰 예정입니다.
+
+
+[^1] 글을 쓸 때 글 자체에 대해 얘기하면 독자들을 산만하게 만들 수 있고, 글 자체에 대한 
+신뢰에 부정적인 영향을 줄 수 있습니다. 따라서, 그러한 부분들은 번역에서 제외하고 
+설명을 추가했습니다.

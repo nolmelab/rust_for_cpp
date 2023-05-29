@@ -1,23 +1,25 @@
-# Borrowed pointers
+# 빌린 포인터들
 
-In the last post I introduced unique pointers. This time I will talk about
-another kind of pointer which is much more common in most Rust programs:
-borrowed pointers (aka borrowed references, or just references).
+이전 글에서는 고유 포인터에 대해 소개했습니다. 이번에는 대부분의 Rust 프로그램에서 더 
+일반적으로 사용되는 다른 종류의 포인터인 참조 포인터(또는 참조)에 대해 이야기하겠습니다.
 
-If we want to have a reference to an existing value (as opposed to creating a
-new value on the heap and pointing to it, as with unique pointers), we must use
-`&`, a borrowed reference. These are probably the most common kind of pointer in
-Rust, and if you want something to fill in for a C++ pointer or reference (e.g.,
-for passing a parameter to a function by reference), this is probably it.
+러스트의 참조는 C/C++의 포인터에 해당합니다. 러스트에서 포인터로 부르는 다른 타잎이 있지만
+러스트의 참조는 C++의 참조와 달리 참조 대상을 변경할 수 있기 때문에 근본적으로 포인터입니다.
+따라서, 아래 논의되는 참조는 C++의 포인터와 비교해야 그 의미가 명확합니다. 왜냐하면 C++의
+참조 자체는 한번만 초기화가 가능한 안전한 타잎에 해당하기 때문입니다. 
 
-We use the `&` operator to create a borrowed reference and to indicate reference
-types, and `*` to dereference them. The same rules about automatic dereferencing
-apply as for unique pointers. For example,
+기존 값에 대한 참조를 가져오려면 (고유 포인터와 달리 힙에 새로운 값을 생성하고 그것을 
+가리키는 것이 아니라면) 대여된 참조(&)를 사용해야 합니다. 대부분의 Rust 프로그램에서 
+이것이 가장 일반적인 포인터 유형이며, C++의 포인터 또는 참조에 대한 대체물을 원한다면 
+(예: 함수에 참조로 매개변수 전달), 이것이 바로 그것입니다.
+
+대여된 참조를 생성하고 참조 유형을 나타내기 위해 & 연산자를 사용하며, 역참조하기 위해 *를
+사용합니다. 고유 포인터와 마찬가지로 자동 역참조에 대한 규칙이 적용됩니다. 예를 들어,
 
 ```rust
 fn foo() {
-    let x = &3;   // type: &i32
-    let y = *x;   // 3, type: i32
+    let x = &3;   // 타입: &i32
+    let y = *x;   // 3, 타입: i32
     bar(x, *x);
     bar(&y, y);
 }
@@ -27,189 +29,236 @@ fn bar(z: &i32, i: i32) {
 }
 ```
 
-The `&` operator does not allocate memory (we can only create a borrowed
-reference to an existing value) and if a borrowed reference goes out of scope,
-no memory gets deleted.
 
-Borrowed references are not unique - you can have multiple borrowed references
-pointing to the same value. E.g.,
+
+위의 코드는 Rust에서 빌린 참조(borrowed reference)[^1]의 사용 예시를 보여줍니다.
+
+`foo` 함수에서는 다음과 같은 작업을 수행합니다:
+
+- x는 & 연산자를 사용하여 값 3에 대한 빌린 참조로 생성됩니다. x의 타입은 &i32로,
+  i32 값에 대한 참조임을 나타냅니다.
+
+- y는 x의 값에 대해 * 연산자를 사용하여 역참조된 값으로 할당됩니다. x는 3에 대한 참조이므로
+  *x는 실제 값 3을 반환하며, y의 타입은 i32입니다.
+
+- bar 함수가 두 번 호출됩니다. 각각 다른 인자를 전달합니다:
+
+  - 첫 번째로, x와 *x를 인자로 전달합니다. x는 참조이며, *x는 해당 참조가 가리키는 값인
+  3입니다.
+
+  - 두 번째로, &y와 y를 인자로 전달합니다. &y는 y의 값에 대한 참조을 생성하며, y는 3인 값을
+    가집니다.
+
+  - bar 함수는 z라는 &i32 타입의 참조와 i라는 i32 값 두 개를 매개변수로 받습니다. 이 
+  - 예시에서는 함수 내용이 비어 있어 (// ...), 특정 동작은 수행하지 않습니다. 이 코드의 
+  목적은 참조의 사용법과 함수 매개변수로 전달하는 방법을 보여주는 것입니다.
+
+& 연산자는 메모리를 할당하지 않습니다. 존재하는 값에 대한 참조(borrowed reference)만
+생성할 수 있으며, 참조가 스코프를 벗어나면 메모리가 삭제되지 않습니다.
+
+참조는 유일하지 않습니다. 동일한 값을 가리키는 여러 개의 참조를 가질 수 있습니다. 
+
+예시:
 
 ```rust
 fn foo() {
-    let x = 5;                // type: i32
-    let y = &x;               // type: &i32
-    let z = y;                // type: &i32
-    let w = y;                // type: &i32
-    println!("These should all be 5: {} {} {}", *w, *y, *z);
+    let x = 5;                // 타입: i32
+    let y = &x;               // 타입: &i32
+    let z = y;                // 타입: &i32
+    let w = y;                // 타입: &i32
+    println!("이들은 모두 5여야 합니다: {} {} {}", *w, *y, *z);
 }
 ```
 
-Like values, borrowed references are immutable by default. You can also use
-`&mut` to take a mutable reference, or to denote mutable reference types.
-Mutable borrowed references are unique (you can only take a single mutable
-reference to a value, and you can only have a mutable reference if there are no
-immutable references). You can use a mutable reference where an immutable one is
-wanted, but not vice versa. Putting all that together in an example:
+위의 코드에서 x는 값 5를 가지는 변수입니다. y, z, w는 x에 대한 참조로 생성됩니다. 이들은
+모두 &i32 타입을 가지며, 동일한 값을 가리키게 됩니다. * 연산자를 사용하여 참조를 
+역참조하면 실제 값인 5를 얻을 수 있습니다. 따라서 println! 매크로를 사용하여 w, y, z의 
+값을 출력하면 모두 5가 나타납니다.
+
+값과 마찬가지로, 참조는 기본적으로 불변입니다. &mut을 사용하여 가변 참조를 가져오거나 
+가변 참조 타입을 나타낼 수도 있습니다. 가변 참조는 유일해야 합니다 (값에 대해 단일한 가변
+참조만 가져올 수 있으며, 불변 참조가 없을 때만 가변 참조를 가져올 수 있습니다). 가변 참조를
+원하는 곳에 불변 참조를 사용할 수는 있지만 그 반대는 불가능합니다. 모든 것을 함께 예제로 
+살펴보겠습니다:
 
 ```rust
 fn bar(x: &i32) { ... }
-fn bar_mut(x: &mut i32) { ... }  // &mut i32 is a reference to an i32 which
-                                 // can be mutated
-
+fn bar_mut(x: &mut i32) { ... }  // &mut i32는 변경 가능한 i32에 대한 참조를 나타냅니다.
 fn foo() {
     let x = 5;
-    //let xr = &mut x;     // Error - can't make a mutable reference to an
-                           // immutable variable
-    let xr = &x;           // Ok (creates an immutable ref)
+    //let xr = &mut x;     // 오류 - 변경 불가능한 변수에 대한 가변 참조를 만들 수 없음
+    let xr = &x;           // Ok (불변 참조를 생성함)
     bar(xr);
-    //bar_mut(xr);         // Error - expects a mutable ref
+    //bar_mut(xr);         // 오류 - 가변 참조를 예상함
 
     let mut x = 5;
-    let xr = &x;           // Ok (creates an immutable ref)
-    //*xr = 4;             // Error - mutating immutable ref
-    //let xr = &mut x;     // Error - there is already an immutable ref, so we
-                           // can't make a mutable one
+    let xr = &x;           // Ok (불변 참조를 생성함)
+    //*xr = 4;             // 오류 - 불변 참조를 변경함
+    //let xr = &mut x;     // 오류 - 이미 불변 참조가 존재하므로 가변 참조를 만들 수 없음
 
     let mut x = 5;
-    let xr = &mut x;       // Ok (creates a mutable ref)
+    let xr = &mut x;       // Ok (가변 참조를 생성함)
     *xr = 4;               // Ok
-    //let xr2 = &x;        // Error - there is already a mutable ref, so we
-                           // can't make an immutable one
-    //let xr2 = &mut x;    // Error - can only have one mutable ref at a time
+    //let xr2 = &x;        // 오류 - 이미 가변 참조가 존재하므로 불변 참조를 만들 수 없음
+    //let xr2 = &mut x;    // 오류 - 한 번에 하나의 가변 참조만 가질 수 있음
     bar(xr);               // Ok
     bar_mut(xr);           // Ok
 }
 ```
+참조의 가변성 또는 불변성은 참조를 보유하는 변수의 가변성과 독립적입니다. 이는 C++에서
+포인터가 가리키는 데이터의 가변성과 독립적으로 const 여부를 가질 수 있는 것과 유사합니다.
+이는 `std::unique_ptr`와는 달리 포인터의 가변성이 데이터의 가변성과 연결되지 않는 것과 
+대조적입니다. 
 
-Note that the reference may be mutable (or not) independently of the mutableness
-of the variable holding the reference. This is similar to C++ where pointers can
-be const (or not) independently of the data they point to. This is in contrast
-to unique pointers, where the mutableness of the pointer is linked to the
-mutableness of the data. For example,
+예시:
 
 ```rust
-fn foo() {
+fn main() {
     let mut x = 5;
-    let mut y = 6;
-    let xr = &mut x;
-    //xr = &mut y;        // Error xr is immutable
-
-    let mut x = 5;
-    let mut y = 6;
-    let mut xr = &mut x;
-    xr = &mut y;          // Ok
-
-    let x = 5;
-    let y = 6;
-    let mut xr = &x;
-    xr = &y;              // Ok - xr is mut, even though the referenced data is not
+    let y = &x;       // 불변 참조를 생성함
+    let z = &mut x;   // 가변 참조를 생성함
+    // *y = 6;        // 오류 - 불변 참조로 가변 데이터를 변경할 수 없음
+    *z = 6;           // 가변 참조로 가변 데이터를 변경할 수 있음
+    println!("{}", x);  // 출력: 6
 }
 ```
 
-If a mutable value is borrowed, it becomes immutable for the duration of the
-borrow. Once the borrowed pointer goes out of scope, the value can be mutated
-again. This is in contrast to unique pointers, which once moved can never be
-used again. For example,
+위의 예제에서 x를 변경 가능한 변수로 선언하고, y는 x의 불변 참조를 생성하고, z는 x의 가변 
+참조를 생성합니다. *y를 통해 y가 가리키는 값을 변경하려고 하면 오류가 발생합니다. 그러나 
+`*z`를 통해 z가 가리키는 값을 변경할 수 있습니다. 따라서 x의 값은 6으로 변경되며, 이를 
+출력합니다.
+
+이를 통해 참조의 가변성이 참조를 보유하는 변수의 가변성과 독립적으로 동작한다는 것을 알 수 
+있습니다.
+
+만약 가변 값을 빌리면(참조를 얻으면), 대여 기간 동안에는 불변으로 간주됩니다. 대여된 
+포인터가 범위를 벗어나면 값은 다시 변경될 수 있습니다. 이는 `std::unique_ptr`와 대조적이며,
+한 번 이동된 `std::unique_ptr`는 다시 사용할 수 없습니다.
+
+예시:
 
 ```rust
-fn foo() {
-    let mut x = 5;            // type: i32
+fn main() {
+    let mut x = 5;               // 가변 변수 x 선언
     {
-        let y = &x;           // type: &i32
-        //x = 4;              // Error - x has been borrowed
-        println!("{} {}", y, x);    // Ok - x can be read
+        let y = &x;              // x의 불변 참조 생성
+        //x = 4;                 // 오류 - x가 대여되었음
+        println!("{} {}", y, x); // OK - x를 읽을 수 있음
     }
-    x = 4;                    // OK - y no longer exists
+    x = 4;                       // OK - y는 더 이상 존재하지 않음
 }
 ```
 
-The same thing happens if we take a mutable reference to a value - the value
-still cannot be modified. In general in Rust, data can only ever be modified via
-one variable or pointer. Furthermore, since we have a mutable reference, we
-can't take an immutable reference. That limits how we can use the underlying
-value:
+위의 예제에서 x를 가변 변수로 선언하고, {} 블록 내에서 y를 x의 불변 참조로 대여합니다. x를
+변경하려고 하면 오류가 발생하지만, y를 통해 x의 값을 읽을 수 있습니다. 그러나 {} 블록이
+종료되면서 y가 범위를 벗어나면 x를 다시 변경할 수 있습니다.
 
-```rust
-fn foo() {
-    let mut x = 5;            // type: i32
-    {
-        let y = &mut x;       // type: &mut i32
-        //x = 4;              // Error - x has been borrowed
-        //println!("{}", x);  // Error - requires borrowing x
-    }
-    x = 4;                    // OK - y no longer exists
-}
-```
+이를 통해 가변 값을 대여하면 대여 기간 동안에는 불변으로 간주되고, 대여된 포인터가 범위를
+벗어나면 값이 다시 변경될 수 있음을 알 수 있습니다.
 
-Unlike C++, Rust won't automatically reference a value for you. So if a function
-takes a parameter by reference, the caller must reference the actual parameter.
-However, pointer types will automatically be converted to a reference:
+
+C++와는 달리, Rust는 값에 대한 자동 참조를 하지 않습니다. 따라서 함수가 참조를 통해
+매개변수를 받는 경우, 호출하는 쪽에서 실제 매개변수를 참조로 전달해야 합니다. 그러나 
+포인터 타입은 자동으로 참조로 변환됩니다.
 
 ```rust
 fn foo(x: &i32) { ... }
 
 fn bar(x: i32, y: Box<i32>) {
     foo(&x);
-    // foo(x);   // Error - expected &i32, found i32
-    foo(y);      // Ok
-    foo(&*y);    // Also ok, and more explicit, but not good style
+    // foo(x);   // 오류 - &i32를 예상했지만 i32를 찾음
+    foo(y);      // OK
+    foo(&*y);    // OK. 더 명시적이지만 좋은 스타일은 아님
 }
 ```
 
+위의 예제에서 foo 함수는 &i32 타입의 매개변수를 받습니다. bar 함수에서 x를 참조로 전달하기
+위해 &x를 사용해야 합니다. 그러나 y는 Box<i32> 타입인 포인터이므로 자동으로 참조로
+변환됩니다. 따라서 foo(y)와 foo(&*y) 모두 올바른 호출입니다.([^2])
+
+
 ## `mut` vs `const`
 
-At this stage it is probably worth comparing `mut` in Rust to `const` in C++.
-Superficially they are opposites. Values are immutable by default in Rust and
-can be made mutable by using `mut`. Values are mutable by default in C++, but
-can be made constant by using `const`. The subtler and more important difference
-is that C++ const-ness applies only to the current use of a value, whereas
-Rust's immutability applies to all uses of a value. So in C++ if I have a
-`const` variable, someone else could have a non-const reference to it and it
-could change without me knowing. In Rust if you have an immutable variable, you
-are guaranteed it won't change.
+이 시점에서 Rust의 mut과 C++의 const를 비교하는 것이 유용할 것입니다. 표면적으로는 그들은
+반대입니다. Rust에서 값은 기본적으로 불변이며 mut을 사용하여 가변으로 만들 수 있습니다. 
+C++에서 값은 기본적으로 가변적이며 const를 사용하여 상수로 만들 수 있습니다. 더 세밀하고
+중요한 차이는 C++의 const는 값의 현재 사용에만 적용되지만, Rust의 불변성은 값의 모든 
+사용에 적용된다는 것입니다. 따라서 C++에서 const 변수를 가지고 있다면, 다른 사람은 해당
+변수에 대해 const가 아닌 참조를 가질 수 있으며 그 값이 변경될 수 있습니다. 하지만 Rust에서
+불변 변수를 가지고 있다면, 그 값이 변경되지 않음이 보장됩니다.
 
-As we mentioned above, all mutable variables are unique. So if you have a
-mutable value, you know it is not going to change unless you change it.
-Furthermore, you can change it freely since you know that no one else is relying
-on it not changing.
+위에서 언급한 대로, 모든 가변 변수는 고유합니다. 따라서 가변 값이 있는 경우 해당 값은 직접
+변경하지 않는 한 변경되지 않을 것이라는 것을 알 수 있습니다. 또한, 다른 사람들이 해당 값의
+변경에 의존하지 않는다는 것을 알기 때문에 자유롭게 변경할 수 있습니다.
 
-## Borrowing and lifetimes
+## 빌림과 수명 (Lifetime)
 
-One of the primary safety goals of Rust is to avoid dangling pointers (where a
-pointer outlives the memory it points to). In Rust, it is impossible to have a
-dangling borrowed reference. It is only legal to create a borrowed reference to
-memory which will be alive longer than the reference (well, at least as long as
-the reference). In other words, the lifetime of the reference must be shorter
-than the lifetime of the referenced value.
+Rust의 주요 안전성 목표 중 하나는 댕글링 포인터(포인터가 가리키는 메모리보다 더 오래 
+지속되는 경우)를 피하는 것입니다. Rust에서는 댕글링 대여 
+참조(dangling borrowed reference)를 갖는 것이 불가능합니다. 대여 참조를 만드는 것은 참조의 
+수명이 참조하는 값의 수명보다 짧거나 같은 경우에만 허용됩니다. 다시 말해, 참조의 수명은 
+참조 대상 값의 수명보다 짧아야 합니다.
 
-That has been accomplished in all the examples in this post. Scopes introduced
-by `{}` or functions are bounds on lifetimes - when a variable goes out of scope
-its lifetime ends. If we try to take a reference to a shorter lifetime, such as
-in a narrower scope, the compiler will give us an error. For example,
+이렇게 함으로써 Rust는 참조가 유효한 메모리를 가리키고 있음을 보장합니다. Rust의 
+라이프타임 시스템은 런타임에 발생할 수 있는 메모리 안전성 문제를 컴파일 타임에 검사하며, 
+댕글링 참조나 무효한 메모리 접근 등의 오류를 사전에 방지합니다. 이는 런타임 에러를 
+최소화하고 안전성을 강화하는 데 도움이 됩니다.
+
+댕글링 포인터 문제는 C++에서 종종 발생하는 메모리 오류 중 하나입니다. Rust는 라이프타임 
+검사와 소유권 규칙을 통해 이러한 문제를 해결하고, 안전하고 신뢰할 수 있는 코드 작성을 
+촉진합니다.
+
+이는 이번 포스트의 모든 예제에서 달성된 것입니다. {}나 함수에 의해 도입된 스코프는 
+수명(lifetime)의 범위입니다. 변수가 스코프를 벗어나면 해당 변수의 수명도 끝나게 됩니다. 
+더 짧은 수명(예: 더 좁은 스코프 내에서)에 대한 참조를 시도하면 컴파일러가 오류를 
+발생시킵니다. 
+
+예시:
 
 ```rust
 fn foo() {
     let x = 5;
-    let mut xr = &x;        // Ok - x and xr have the same lifetime
+    let mut xr = &x; // Ok - x와 xr은 동일한 수명을 가집니다
     {
         let y = 6;
-        xr = &y             // Error - xr will outlive y
-    }                       // y is released here
-    println!("{:?}", xr);   // xr is used here so it outlives y. Try to comment out this line.
-}                           // x and xr are released here
+        xr = &y // 오류 - xr은 y보다 더 오래 지속될 것입니다
+    } // y는 여기에서 해제됩니다
+
+    println!("{:?}", xr); // xr은 여기에서 사용되므로 y보다 오래 지속됩니다. 
+                          // 위 줄을 주석 처리해보세요.
+} // x와 xr은 여기에서 해제됩니다
 ```
 
-In the above example, xr and y don't have the same lifetime because y starts
-later than xr, but it's the end of lifetimes which is more interesting, since you
-can't reference a variable before it exists in any case - something else which
-Rust enforces and which makes it safer than C++.
+위의 예제에서 xr과 y는 수명이 다릅니다. y는 xr보다 늦게 시작되기 때문입니다. 그러나 보다
+흥미로운 것은 수명의 끝입니다. 어떤 경우에도 변수가 존재하기 전에 참조할 수 없기 때문에 
+Rust는 이를 강제하고 이로 인해 C++보다 안전합니다.[^3]
 
-## Explicit lifetimes
+## 명식적인 수명 표기
 
-After playing with borrowed pointers for a while, you'll probably come across
-borrowed pointers with an explicit lifetime. These have the syntax `&'a T` ([cf.](https://en.wikipedia.org/wiki/Cf.)
-`&T`). They're kind of a big topic since I need to cover lifetime-polymorphism
-at the same time so I'll leave it for another post (there are a few more less
-common pointer types to cover first though). For now, I just want to say that
-`&T` is a shorthand for `&'a T` where `a` is the current scope, that is the
-scope in which the type is declared.
+일정 시간 동안 참조를 사용한 후에는 수명이 명시된 참조와 마주치게 될 것입니다. 이들은 
+`&'a T`라는 구문을 갖습니다. 이는 수명 다형성에 대해서도 함께 다루어야 할 큰 주제이기 
+때문에 다른 게시물에서 다루겠습니다. (하지만 먼저 몇 가지 덜 일반적인 포인터 유형을 다룰
+예정입니다.) 현재는 &T가 &'a T의 약식 표현임을 알려드리고 싶습니다. 여기서 a는 현재 범위를
+의미하며, 타입이 선언된 범위입니다.[^4]
+
+
+[^1] 이 문서는 borrowed reference(빌린 참조)라고 참조를 부르고 있습니다. C++은 그냥 
+참조(refernce)라고 부릅니다. 다른 문서들에서는 빌림 또는 참조라고 합니다. 러스트는 
+참조의 의존 관계를 컴파일 시 추적하기 때문에 이를 빌림으로 생각하도록 합니다. 그래도 참조를
+항상 빌린 참조 또는 빌림으로 적기가 모호한 면이 있습니다. 저희는 참조로 통일하고 
+가변 참조, 불편 참조로 하겠습니다. 참조를 빌림으로 바라보는 관점은 유지해야 합니다. 
+
+[^2] Box가 포인터 타잎이기 때문이라는 설명은 오해의 여지가 있습니다. 러스트는 트레이트의 
+언어라고 할만큼 컴파일러가 제공하는 트레이트, 컴파일러가 사용하는 라이브러리 트레이트들이 
+있습니다. 트레이트는 Java나 C#의 인터페이스와 거의 유사하나 더 강력한 지원 도구를 갖추고 
+있는 러스트 프로그램 구조화의 핵심 중 하나입니다. Box가 자동으로 참조로 변환되는 것은 
+Deref 트레이트를 구현하고 있기 때문입니다. 러스트 언어 책 등에서 역참조 
+변환(Deref Coercion)을 참고하세요.
+
+[^3] 예제 코드가 C++에서는 동작하는지 확인해 보세요. C++의 포인터로 보면 xr에 y의 참조를 
+수명에 관계 없이 얻을 수 있을 것입니다.
+
+[^4] 수명이 범위(Scope)와 정확하게 일치하지는 않습니다. 더 이상 참조되지 않거나 더 이상 
+사용되지 않으면 수명이 다했다는 기준으로 추적합니다. 이는 가비지 컬렉터의 논리 구조와 
+매우 비슷합니다. 정적인 코드 상의 사용으로 만들어지는 그래프 상에서 추적하는 것으로 
+생각하고 있습니다 (컴파일러 내부 구현을 보지는 않았기에).
