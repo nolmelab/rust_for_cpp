@@ -1,5 +1,6 @@
 # Table of contents
 
+* [환영합니다!](README.md)
 * [Introduction - Hello world!](hello-world.md)
 * [Control flow](control-flow.md)
 * [Primitive types and operators](primitives.md)
